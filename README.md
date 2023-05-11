@@ -5,7 +5,13 @@ A toy project to learn Rust
 HashRust is a command-line util for hashing files. Supports MD5, SHA1, SHA2 and SHA3.
 Multi-threaded by default using Rayon.
 
-For info try:
+Compile using:
+
+```cargo build -r```
+
+It was build on Windows, but has an option to behave in a case-sensitive way for Linux.
+
+Once built, for info try:
 
 ```hash_rust -h```
 
@@ -15,4 +21,7 @@ Example usage:
 
 The project also includes a Powershell wrapper to parse the output into useful objects.
 
-```hashfile.ps1 *.txt -algorithm sha3```
+```
+$results = .\hashfile.ps1 *.txt -algorithm sha3
+$results
+```

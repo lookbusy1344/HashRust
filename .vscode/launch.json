@@ -1,0 +1,72 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug with lldb params",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--bin=hash_rust",
+                    "--package=hash_rust"
+                ],
+                "filter": {
+                    "kind": "bin"
+                }
+            },
+            "args": [
+				"C:\\Users\\name\\Documents\\*.txt",
+				"-d"
+            ],
+            "cwd": "${workspaceFolder}",
+            "console": "externalTerminal"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug with lldb",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--bin=hash_rust",
+                    "--package=hash_rust"
+                ],
+                "filter": {
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "name": "Debug with cppvsdbg",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceRoot}/target/debug/hash_rust.exe",
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${workspaceRoot}",
+            "environment": [],
+            "externalConsole": true
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--bin=hash_rust",
+                    "--package=hash_rust"
+                ],
+                "filter": {
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        }
+    ]
+}
