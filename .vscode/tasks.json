@@ -47,6 +47,23 @@
 			],
 			"group": "build",
 			"label": "rust: cargo clippy"
+		},
+		{
+			"type": "cargo",
+			"command": "clippy",
+			"args": [
+				"--",
+				"-D", "clippy::all",
+				"-D", "clippy::pedantic"
+			],
+			"problemMatcher": [
+				"$rustc"
+			],
+			"group": {
+				"kind": "build",
+				"isDefault": false
+			},
+			"label": "rust: cargo clippy pedantic"
 		}
 	]
 }
