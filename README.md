@@ -22,6 +22,9 @@ Example usage:
 The project also includes a Powershell wrapper to parse the output into useful objects.
 
 ```
+$results = dir *.txt | .\hashfile.ps1 -algorithm sha3
+..or..
 $results = .\hashfile.ps1 *.txt -algorithm sha3
+
 $results
 ```
