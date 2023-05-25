@@ -18,27 +18,6 @@ use std::io::BufRead;
 use std::str::FromStr;
 use strum::EnumString;
 
-const VERSION: Option<&str> = option_env!("CARGO_PKG_VERSION");
-const GIT_VERSION: &str = git_version!();
-
-const HELP: &str = "\
-USAGE:
-    hash_rust.exe [flags] [options] file glob
-FLAGS:
-    -h, --help                   Prints help information
-    -d, --debug                  Debug messages
-    -c, --case-sensitive         Case-sensitive glob matching
-    -x, --exclude-filenames      Exclude filenames from output
-    -s, --single-thread          Single-threaded (not multi-threaded)
-OPTIONS:
-    -a, --algorithm [algorithm]  Hash algorithm to use (default is SHA3-256)
-    -l, --limit [num]            Limit number of files processed
-    
-Algorithm can be:
-    MD5, SHA1, 
-    SHA2 / SHA2-256, SHA2-384, SHA2-512, 
-    SHA3 / SHA3-256 (default), SHA3-384, SHA3-512";
-
 #[derive(Debug, Copy, Clone, PartialEq, Eq, EnumString)]
 #[strum(ascii_case_insensitive)]
 enum HashAlgorithm {
@@ -59,6 +38,28 @@ enum HashAlgorithm {
     #[strum(serialize = "SHA3-512", serialize = "SHA3_512")]
     SHA3_512,
 }
+
+const DEFAULT_HASH: HashAlgorithm = HashAlgorithm::SHA3_256;
+const VERSION: Option<&str> = option_env!("CARGO_PKG_VERSION");
+const GIT_VERSION: &str = git_version!();
+
+const HELP: &str = "\
+USAGE:
+    hash_rust.exe [flags] [options] file glob
+FLAGS:
+    -h, --help                   Prints help information
+    -d, --debug                  Debug messages
+    -c, --case-sensitive         Case-sensitive glob matching
+    -x, --exclude-filenames      Exclude filenames from output
+    -s, --single-thread          Single-threaded (not multi-threaded)
+OPTIONS:
+    -a, --algorithm [algorithm]  Hash algorithm to use
+    -l, --limit [num]            Limit number of files processed
+    
+Algorithm can be:
+    MD5, SHA1, 
+    SHA2 / SHA2-256, SHA2-384, SHA2-512, 
+    SHA3 / SHA3-256 (default), SHA3-384, SHA3-512";
 
 #[allow(clippy::struct_excessive_bools)]
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
@@ -87,6 +88,7 @@ fn main() -> anyhow::Result<()> {
             GIT_VERSION
         );
         println!("{HELP}");
+        println!("Default algorithm is {DEFAULT_HASH:?}");
         return Ok(());
     }
 
@@ -96,7 +98,7 @@ fn main() -> anyhow::Result<()> {
 
     if algo.is_err() {
         return Err(anyhow::anyhow!(
-            "Algorithm can be: MD5, SHA1, SHA2 / SHA2-256, SHA2-384, SHA2-512, SHA3 / SHA3-256 (default), SHA3-384, SHA3-512"
+            "Algorithm can be: MD5, SHA1, SHA2 / SHA2-256, SHA2-384, SHA2-512, SHA3 / SHA3-256, SHA3-384, SHA3-512. Default is {DEFAULT_HASH:?}",
         ));
     }
 
@@ -278,8 +280,8 @@ fn call_hasher(algo: HashAlgorithm, path: &str) -> anyhow::Result<BasicHash> {
 /// convert hash algorithm string into an integer
 fn parse_hash_algorithm(algorithm: &Option<String>) -> Result<HashAlgorithm, strum::ParseError> {
     if algorithm.is_none() || algorithm.as_ref().unwrap().is_empty() {
-        // no algorithm specified, default to sha3-256
-        return Ok(HashAlgorithm::SHA3_256);
+        // no algorithm specified, use the default
+        return Ok(DEFAULT_HASH);
     }
 
     HashAlgorithm::from_str(algorithm.as_ref().unwrap())
