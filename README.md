@@ -1,23 +1,46 @@
-# HashRust
+# Hash Rust
 
-A toy project to learn Rust
+## A toy project to hash files using various algorithms, using Rust
 
-HashRust is a command-line util for hashing files. Supports MD5, SHA1, SHA2 and SHA3.
-Multi-threaded by default using Rayon.
+HashRust is a command-line util for hashing files. Supports `MD5, SHA1, SHA2 and SHA3`.
+Multi-threaded by default using Rayon. Use a single thread with `-s`
 
-Compile using:
+
+## Building
 
 ```cargo build -r```
 
 It was build on Windows, but has an option to behave in a case-sensitive way for Linux.
 
-Once built, for info try:
+## Usage
 
-```hash_rust -h```
+Command line help
 
-Example usage:
+```
+hash_rust.exe filespec [flags] [options]
 
-```hash_rust *.txt -a sha3```
+Eg:
+hash_rust.exe *.txt -a sha2
+hash_rust.exe *.txt --algorithm md5 --debug
+
+FLAGS:
+    -h, --help                   Prints help information
+    -d, --debug                  Debug messages
+    -c, --case-sensitive         Case-sensitive glob matching
+    -x, --exclude-filenames      Exclude filenames from output
+    -s, --single-thread          Single-threaded (not multi-threaded)
+
+OPTIONS:
+    -a, --algorithm [algorithm]  Hash algorithm to use
+    -l, --limit [num]            Limit number of files processed
+    
+Algorithm can be:
+    MD5, SHA1, 
+    SHA2 / SHA2-256, SHA2-384, SHA2-512, 
+    SHA3 / SHA3-256 (default), SHA3-384, SHA3-512
+```
+
+## Powershell
 
 The project also includes a Powershell wrapper to parse the output into useful objects.
 
