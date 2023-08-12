@@ -1,6 +1,6 @@
 # Hash Rust
 
-## A toy project to hash files using various algorithms, using Rust
+## A small CLI project to hash files using various algorithms, using Rust
 
 HashRust is a command-line util for hashing files. Supports `MD5, SHA1, SHA2 and SHA3`.
 Multi-threaded by default using Rayon. Use a single thread with `-s`
