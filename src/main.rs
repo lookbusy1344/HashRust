@@ -148,6 +148,12 @@ fn main() -> anyhow::Result<()> {
         eprintln!("Paths: {paths:?}");
     }
 
+    // Check for unused arguments, and error out if there are any
+    let unused = pargs.finish();
+    if !unused.is_empty() {
+        return Err(anyhow::anyhow!("Unused arguments: {:?}", unused));
+    }
+
     if config.singlethread || paths.len() == 1 {
         // asked for single thread, or only one path given
         if config.debugmode {
