@@ -149,10 +149,7 @@ fn main() -> anyhow::Result<()> {
     }
 
     // Check for unused arguments, and error out if there are any
-    let unused = pargs.finish();
-    if !unused.is_empty() {
-        return Err(anyhow::anyhow!("Unused arguments: {:?}", unused));
-    }
+    args_finished(pargs)?;
 
     if config.singlethread || paths.len() == 1 {
         // asked for single thread, or only one path given
@@ -291,4 +288,14 @@ fn parse_hash_algorithm(algorithm: &Option<String>) -> Result<HashAlgorithm, str
     }
 
     HashAlgorithm::from_str(algorithm.as_ref().unwrap())
+}
+
+/// Check for unused arguments, and error out if there are any
+fn args_finished(args: pico_args::Arguments) -> anyhow::Result<()> {
+    let unused = args.finish();
+    if unused.is_empty() {
+        Ok(())
+    } else {
+        Err(anyhow::anyhow!("Unused arguments: {:?}", unused))
+    }
 }
