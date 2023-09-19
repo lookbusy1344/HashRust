@@ -13,6 +13,7 @@ use rayon::prelude::*;
 use sha1::Sha1;
 use sha2::{Sha256, Sha384, Sha512};
 use sha3::{Sha3_256, Sha3_384, Sha3_512};
+use std::ffi::OsString;
 use std::io;
 use std::io::BufRead;
 use std::str::FromStr;
@@ -82,8 +83,8 @@ fn main() -> anyhow::Result<()> {
     let mut pargs = pico_args::Arguments::from_env();
 
     // diagnostic code to set the parameters
-    //let paramsvec: Vec<std::ffi::OsString> = vec!["-h".into()];
-    //println!("DIAGNOSTIC PARAMETERS SET: {:?}", paramsvec);
+    //let paramsvec: Vec<std::ffi::OsString> = vec!["--rubbish".into()];
+    //println!("DIAGNOSTIC PARAMETERS SET: {paramsvec:?}");
     //let mut pargs = pico_args::Arguments::from_vec(paramsvec);
 
     if pargs.contains(["-h", "--help"]) {
@@ -116,22 +117,36 @@ fn main() -> anyhow::Result<()> {
         limitnum: pargs.opt_value_from_str(["-l", "--limit"])?,
     };
 
-    let path: Result<String, _> = pargs.free_from_str();
+    // Check for unused arguments, and error out if there are any beginning with a dash
+    // anything else might legitimately be a path, so we'll check that later
+    let remaining = args_finished(pargs)?;
+
+    // get the supplied path, if any
+    let path = if remaining.is_empty() {
+        None
+    } else {
+        // check there is exactly one path
+        if remaining.len() > 1 {
+            return Err(anyhow::anyhow!(
+                "Only one path can be specified, not {}",
+                remaining.len()
+            ));
+        }
+        Some(remaining[0].to_string_lossy().to_string())
+    };
 
     if config.debugmode {
         eprintln!("Config: {config:?}");
-        if path.is_err() {
+        if path.is_none() {
             eprintln!("No path specified, reading from stdin");
         } else {
             eprintln!("Path: {path:?}");
         }
     }
 
-    // Check for unused arguments, and error out if there are any
-    args_finished(pargs)?;
-
+    // get the required files, either using supplied path or from reading stdin
     let mut paths = {
-        if let Ok(p) = path {
+        if let Some(p) = path {
             // path specified, use glob
             get_paths_matching_glob(&config, p.as_str())?
         } else {
@@ -296,11 +311,19 @@ fn parse_hash_algorithm(algorithm: &Option<String>) -> Result<HashAlgorithm, str
 }
 
 /// Check for unused arguments, and error out if there are any
-fn args_finished(args: pico_args::Arguments) -> anyhow::Result<()> {
+fn args_finished(args: pico_args::Arguments) -> anyhow::Result<Vec<OsString>> {
     let unused = args.finish();
-    if unused.is_empty() {
-        Ok(())
-    } else {
-        Err(anyhow::anyhow!("Unused arguments: {:?}", unused))
+
+    // check any unused members do not start with a dash
+    for arg in &unused {
+        if arg.to_string_lossy().starts_with('-') {
+            // this remaining argument starts with a dash, so it's an unknown argument
+            return Err(anyhow::anyhow!(
+                "Unknown argument: {}",
+                arg.to_string_lossy()
+            ));
+        }
     }
+
+    Ok(unused)
 }
