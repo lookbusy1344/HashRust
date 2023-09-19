@@ -83,6 +83,7 @@ fn main() -> anyhow::Result<()> {
 
     // diagnostic code to set the parameters
     //let paramsvec: Vec<std::ffi::OsString> = vec!["-h".into()];
+    //println!("DIAGNOSTIC PARAMETERS SET: {:?}", paramsvec);
     //let mut pargs = pico_args::Arguments::from_vec(paramsvec);
 
     if pargs.contains(["-h", "--help"]) {
@@ -126,6 +127,9 @@ fn main() -> anyhow::Result<()> {
         }
     }
 
+    // Check for unused arguments, and error out if there are any
+    args_finished(pargs)?;
+
     let mut paths = {
         if let Ok(p) = path {
             // path specified, use glob
@@ -151,9 +155,6 @@ fn main() -> anyhow::Result<()> {
     if config.debugmode {
         eprintln!("Paths: {paths:?}");
     }
-
-    // Check for unused arguments, and error out if there are any
-    args_finished(pargs)?;
 
     if config.singlethread || paths.len() == 1 {
         // asked for single thread, or only one path given
