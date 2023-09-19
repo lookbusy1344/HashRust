@@ -81,6 +81,10 @@ struct FileHash {
 fn main() -> anyhow::Result<()> {
     let mut pargs = pico_args::Arguments::from_env();
 
+    // diagnostic code to set the parameters
+    //let paramsvec: Vec<std::ffi::OsString> = vec!["-h".into()];
+    //let mut pargs = pico_args::Arguments::from_vec(paramsvec);
+
     if pargs.contains(["-h", "--help"]) {
         println!(
             "File hasher for various algorithms. Version {} ({})",
