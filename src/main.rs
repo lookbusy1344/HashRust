@@ -119,34 +119,32 @@ fn main() -> anyhow::Result<()> {
 
     // Check for unused arguments, and error out if there are any beginning with a dash
     // anything else might legitimately be a path, so we'll check that later
-    let remaining = args_finished(pargs)?;
+    let remainingargs = args_finished(pargs)?;
 
-    // get the supplied path, if any
-    let path = if remaining.is_empty() {
-        None
-    } else {
-        // check there is exactly one path
-        if remaining.len() > 1 {
+    // get the supplied path, if any. Turn the vector into a single Option<String>
+    let suppliedpath = match remainingargs.len() {
+        0 => None, // no path, we are expecting to read from stdin
+        1 => Some(remainingargs[0].to_string_lossy().to_string()), // one path given
+        _ => {
+            // more than one path given, error out
             return Err(anyhow::anyhow!(
-                "Only one path can be specified, not {}",
-                remaining.len()
+                "Only one path parameter can be given, but found {remainingargs:?}"
             ));
         }
-        Some(remaining[0].to_string_lossy().to_string())
     };
 
     if config.debugmode {
         eprintln!("Config: {config:?}");
-        if path.is_none() {
+        if suppliedpath.is_none() {
             eprintln!("No path specified, reading from stdin");
         } else {
-            eprintln!("Path: {path:?}");
+            eprintln!("Path: {}", suppliedpath.as_ref().unwrap());
         }
     }
 
     // get the required files, either using supplied path or from reading stdin
     let mut paths = {
-        if let Some(p) = path {
+        if let Some(p) = suppliedpath {
             // path specified, use glob
             get_paths_matching_glob(&config, p.as_str())?
         } else {
@@ -168,7 +166,7 @@ fn main() -> anyhow::Result<()> {
     }
 
     if config.debugmode {
-        eprintln!("Paths: {paths:?}");
+        eprintln!("Files to hash: {paths:?}");
     }
 
     if config.singlethread || paths.len() == 1 {
