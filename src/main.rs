@@ -88,13 +88,7 @@ fn main() -> anyhow::Result<()> {
     //let mut pargs = pico_args::Arguments::from_vec(paramsvec);
 
     if pargs.contains(["-h", "--help"]) {
-        println!(
-            "File hasher for various algorithms. Version {} ({})",
-            VERSION.unwrap_or("?"),
-            GIT_VERSION
-        );
-        println!("{HELP}");
-        println!("Default algorithm is {DEFAULT_HASH:?}");
+        show_help();
         return Ok(());
     }
 
@@ -306,6 +300,17 @@ fn parse_hash_algorithm(algorithm: &Option<String>) -> Result<HashAlgorithm, str
     }
 
     HashAlgorithm::from_str(algorithm.as_ref().unwrap())
+}
+
+/// Show help message
+fn show_help() {
+    println!(
+        "File hasher for various algorithms. Version {} ({})",
+        VERSION.unwrap_or("?"),
+        GIT_VERSION
+    );
+    println!("{HELP}");
+    println!("Default algorithm is {DEFAULT_HASH:?}");
 }
 
 /// Check for unused arguments, and error out if there are any
