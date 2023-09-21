@@ -79,7 +79,22 @@ struct FileHash {
     hash: String,
 }
 
+/// Call the inner main function, and show help if there is an error
 fn main() -> anyhow::Result<()> {
+    let result = inner_main();
+
+    if let Err(e) = result {
+        // there was an error, show help
+        show_help();
+        println!();
+        return Err(e);
+    }
+
+    Ok(())
+}
+
+/// Inner main function, which can return an error
+fn inner_main() -> anyhow::Result<()> {
     let mut pargs = pico_args::Arguments::from_env();
 
     // diagnostic code to set the parameters
