@@ -5,8 +5,9 @@
 mod classes;
 mod hasher;
 
-use crate::classes::{ConfigSettings, HashAlgorithm, DEFAULT_HASH, GIT_VERSION, HELP, VERSION};
-use crate::hasher::BasicHash;
+use crate::classes::{
+    BasicHash, ConfigSettings, HashAlgorithm, DEFAULT_HASH, GIT_VERSION, HELP, VERSION,
+};
 use glob::GlobResult;
 use hasher::{file_exists, hash_file};
 use md5::Md5;
@@ -57,14 +58,14 @@ fn inner_main() -> anyhow::Result<()> {
         ));
     }
 
-    let config = ConfigSettings {
-        debugmode: pargs.contains(["-d", "--debug"]),
-        excludefn: pargs.contains(["-x", "--exclude-filenames"]),
-        singlethread: pargs.contains(["-s", "--single-thread"]),
-        casesensitive: pargs.contains(["-c", "--case-sensitive"]),
-        algorithm: algo.unwrap(),
-        limitnum: pargs.opt_value_from_str(["-l", "--limit"])?,
-    };
+    let config = ConfigSettings::new(
+        pargs.contains(["-d", "--debug"]),
+        pargs.contains(["-x", "--exclude-filenames"]),
+        pargs.contains(["-s", "--single-thread"]),
+        pargs.contains(["-c", "--case-sensitive"]),
+        algo.unwrap(),
+        pargs.opt_value_from_str(["-l", "--limit"])?,
+    );
 
     // Check for unused arguments, and error out if there are any beginning with a dash
     // anything else might legitimately be a path, so we'll check that later

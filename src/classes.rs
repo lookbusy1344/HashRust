@@ -26,8 +26,14 @@ pub enum HashAlgorithm {
     SHA3_512,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+/// Basic hash string. This is a wrapper around a String
+pub struct BasicHash(pub String);
+
 #[allow(clippy::struct_excessive_bools)]
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[readonly::make]
+#[derive(Debug, Copy, Clone)]
+/// Configuration settings
 pub struct ConfigSettings {
     pub debugmode: bool,
     pub excludefn: bool,
@@ -37,10 +43,26 @@ pub struct ConfigSettings {
     pub limitnum: Option<usize>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub struct FileHash {
-    pub path: String,
-    pub hash: String,
+impl ConfigSettings {
+    #[allow(clippy::fn_params_excessive_bools)]
+    /// Create a new `ConfigSettings` object
+    pub fn new(
+        debugmode: bool,
+        excludefn: bool,
+        singlethread: bool,
+        casesensitive: bool,
+        algorithm: HashAlgorithm,
+        limitnum: Option<usize>,
+    ) -> Self {
+        Self {
+            debugmode,
+            excludefn,
+            singlethread,
+            casesensitive,
+            algorithm,
+            limitnum,
+        }
+    }
 }
 
 pub const HELP: &str = "\

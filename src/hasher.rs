@@ -1,24 +1,10 @@
+use crate::classes::BasicHash;
 use digest::Digest;
 use std::fs::File;
 use std::io::{BufReader, Read};
 use std::path::Path;
 
 const BUFFER_SIZE: usize = 4096;
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub struct BasicHash(pub String);
-
-impl From<String> for BasicHash {
-    fn from(item: String) -> Self {
-        BasicHash(item)
-    }
-}
-
-impl From<&str> for BasicHash {
-    fn from(item: &str) -> Self {
-        BasicHash(item.to_string())
-    }
-}
 
 /// Hash a file using the given hasher as a Digest implementation, eg `Sha1`, `Sha256`, `Sha3_256`
 pub fn hash_file<D: Digest>(filename: &str) -> anyhow::Result<BasicHash> {
@@ -50,13 +36,12 @@ pub fn file_exists(path: &str) -> bool {
     path.exists() && path.is_file()
 }
 
-/// take a string and get the size of the file
-#[allow(dead_code)]
-fn file_size(path: &str) -> anyhow::Result<u64> {
-    let path = Path::new(path);
-    if path.exists() && path.is_file() {
-        Ok(path.metadata()?.len())
-    } else {
-        Err(anyhow::anyhow!("File not found: {}", path.display()))
-    }
-}
+// /// take a string and get the size of the file
+// fn file_size(path: &str) -> anyhow::Result<u64> {
+//     let path = Path::new(path);
+//     if path.exists() && path.is_file() {
+//         Ok(path.metadata()?.len())
+//     } else {
+//         Err(anyhow::anyhow!("File not found: {}", path.display()))
+//     }
+// }
