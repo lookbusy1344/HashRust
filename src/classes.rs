@@ -1,6 +1,10 @@
 use git_version::git_version;
 use strum::EnumString;
 
+pub const DEFAULT_HASH: HashAlgorithm = HashAlgorithm::SHA3_256;
+pub const VERSION: Option<&str> = option_env!("CARGO_PKG_VERSION");
+pub const GIT_VERSION: &str = git_version!();
+
 #[derive(Debug, Copy, Clone, PartialEq, Eq, EnumString)]
 #[strum(ascii_case_insensitive)]
 pub enum HashAlgorithm {
@@ -22,9 +26,22 @@ pub enum HashAlgorithm {
     SHA3_512,
 }
 
-pub const DEFAULT_HASH: HashAlgorithm = HashAlgorithm::SHA3_256;
-pub const VERSION: Option<&str> = option_env!("CARGO_PKG_VERSION");
-pub const GIT_VERSION: &str = git_version!();
+#[allow(clippy::struct_excessive_bools)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub struct ConfigSettings {
+    pub debugmode: bool,
+    pub excludefn: bool,
+    pub singlethread: bool,
+    pub casesensitive: bool,
+    pub algorithm: HashAlgorithm,
+    pub limitnum: Option<usize>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub struct FileHash {
+    pub path: String,
+    pub hash: String,
+}
 
 pub const HELP: &str = "\
 USAGE:
@@ -43,20 +60,3 @@ Algorithm can be:
     MD5, SHA1, 
     SHA2 / SHA2-256, SHA2-384, SHA2-512, 
     SHA3 / SHA3-256 (default), SHA3-384, SHA3-512";
-
-#[allow(clippy::struct_excessive_bools)]
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub struct ConfigSettings {
-    pub debugmode: bool,
-    pub excludefn: bool,
-    pub singlethread: bool,
-    pub casesensitive: bool,
-    pub algorithm: HashAlgorithm,
-    pub limitnum: Option<usize>,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub struct FileHash {
-    pub path: String,
-    pub hash: String,
-}
