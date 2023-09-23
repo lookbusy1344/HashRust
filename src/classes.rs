@@ -3,7 +3,7 @@ use strum::EnumString;
 
 pub const DEFAULT_HASH: HashAlgorithm = HashAlgorithm::SHA3_256;
 pub const VERSION: Option<&str> = option_env!("CARGO_PKG_VERSION");
-pub const GIT_VERSION: &str = git_version!();
+pub const GIT_VERSION: &str = git_version!(args = ["--abbrev=40", "--always", "--dirty=*"]);
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, EnumString)]
 #[strum(ascii_case_insensitive)]
