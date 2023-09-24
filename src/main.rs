@@ -6,7 +6,7 @@ mod classes;
 mod hasher;
 
 use crate::classes::{
-    git_version, BasicHash, ConfigSettings, HashAlgorithm, DEFAULT_HASH, HELP, VERSION,
+    BasicHash, ConfigSettings, HashAlgorithm, DEFAULT_HASH, GIT_VERSION_SHORT, HELP, VERSION,
 };
 use glob::GlobResult;
 use hasher::{file_exists, hash_file};
@@ -263,7 +263,7 @@ fn show_help() {
     println!(
         "File hasher for various algorithms. Version {} ({})",
         VERSION.unwrap_or("?"),
-        git_version(14)
+        GIT_VERSION_SHORT
     );
     println!("{HELP}");
     println!("Default algorithm is {DEFAULT_HASH:?}");
