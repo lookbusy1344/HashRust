@@ -1,9 +1,11 @@
+use std::borrow::Cow;
+
 use git_version::git_version;
 use strum::EnumString;
 
 pub const DEFAULT_HASH: HashAlgorithm = HashAlgorithm::SHA3_256;
 pub const VERSION: Option<&str> = option_env!("CARGO_PKG_VERSION");
-pub const GIT_VERSION: &str = git_version!(args = ["--abbrev=40", "--always", "--dirty=+"]);
+const GIT_VERSION: &str = git_version!(args = ["--abbrev=40", "--always", "--dirty=+"]);
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, EnumString)]
 #[strum(ascii_case_insensitive)]
@@ -62,6 +64,19 @@ impl ConfigSettings {
             algorithm,
             limitnum,
         }
+    }
+}
+
+/// Get the version hash, with a given length. Either a borrowed slice, or an owned string
+pub fn git_version(len: usize) -> Cow<'static, str> {
+    // slice the git hash string to desired length
+    let slice = &GIT_VERSION[..len];
+    let modified = GIT_VERSION.ends_with('+');
+
+    if modified {
+        Cow::Owned(format!("{slice}+")) // build a new owned string from the slice
+    } else {
+        Cow::Borrowed(slice) // just return the slice
     }
 }
 
