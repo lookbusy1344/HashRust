@@ -26,7 +26,7 @@ fn main() -> anyhow::Result<()> {
 
     if let Err(e) = result {
         // there was an error, show help
-        show_help();
+        show_help(true);
         println!();
         return Err(e);
     }
@@ -44,7 +44,7 @@ fn inner_main() -> anyhow::Result<()> {
     //let mut pargs = pico_args::Arguments::from_vec(paramsvec);
 
     if pargs.contains(["-h", "--help"]) {
-        show_help();
+        show_help(true);
         return Ok(());
     }
 
@@ -84,6 +84,8 @@ fn inner_main() -> anyhow::Result<()> {
     };
 
     if config.debugmode {
+        show_help(false);
+        eprintln!();
         eprintln!("Config: {config:?}");
         if suppliedpath.is_none() {
             eprintln!("No path specified, reading from stdin");
@@ -259,13 +261,15 @@ fn parse_hash_algorithm(algorithm: &Option<String>) -> Result<HashAlgorithm, str
 }
 
 /// Show help message
-fn show_help() {
+fn show_help(longform: bool) {
     println!(
         "File hasher for various algorithms. Version {} ({})",
         VERSION.unwrap_or("?"),
         GIT_VERSION_SHORT
     );
-    println!("{HELP}");
+    if longform {
+        println!("{HELP}");
+    }
     println!("Default algorithm is {DEFAULT_HASH:?}");
 }
 
