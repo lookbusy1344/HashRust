@@ -1,5 +1,7 @@
 # Hash Rust
 
+[![Building HashRust](https://github.com/lookbusy1344/HashRust/actions/workflows/rust.yml/badge.svg)](https://github.com/lookbusy1344/HashRust/actions/workflows/rust.yml)
+
 ## A small CLI project to hash files using various algorithms, using Rust
 
 HashRust is a command-line util for hashing files. Supports `MD5, SHA1, SHA2 and SHA3`.
