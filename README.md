@@ -16,31 +16,39 @@ It was build on Windows, but has an option to behave in a case-sensitive way for
 
 ## Usage
 
-Command line help
-
 ```
 hash_rust.exe filespec [flags] [options]
 
-Eg:
-hash_rust.exe *.txt -a sha2
-hash_rust.exe *.txt --algorithm md5 --debug
+For example:
+  hash_rust.exe *.txt -a sha2
+  hash_rust.exe *.txt --algorithm md5 --debug
 
-FLAGS:
+Or pipe in a list of files:
+  dir *.txt /b | hash_rust.exe
+```
+
+## Flags
+
+```
     -h, --help                   Prints help information
     -d, --debug                  Debug messages
     -c, --case-sensitive         Case-sensitive glob matching
     -x, --exclude-filenames      Exclude filenames from output
     -s, --single-thread          Single-threaded (not multi-threaded)
+```
 
-OPTIONS:
+## Options
+
+```
     -a, --algorithm [algorithm]  Hash algorithm to use
     -l, --limit [num]            Limit number of files processed
+```
     
 Algorithm can be:
     MD5, SHA1, 
     SHA2 / SHA2-256, SHA2-384, SHA2-512, 
     SHA3 / SHA3-256 (default), SHA3-384, SHA3-512
-```
+
 
 ## Powershell
 
