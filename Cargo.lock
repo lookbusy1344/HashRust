@@ -137,7 +137,7 @@ checksum = "d2fabcfbdc87f4758337ca535fb41a6d701b65693ce38287d856d1674551ec9b"
 
 [[package]]
 name = "hash_rust"
-version = "1.1.0"
+version = "1.2.0"
 dependencies = [
  "anyhow",
  "digest",
@@ -152,6 +152,7 @@ dependencies = [
  "sha2",
  "sha3",
  "strum",
+ "whirlpool",
 ]
 
 [[package]]
@@ -366,3 +367,12 @@ name = "version_check"
 version = "0.9.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "49874b5167b65d7193b8aba1567f5c7d93d001cafc34600cee003eda787e483f"
+
+[[package]]
+name = "whirlpool"
+version = "0.10.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f1ae50671d985c15b3214c7d969b8b520759fb3c8682444bec15ef775335a05c"
+dependencies = [
+ "digest",
+]

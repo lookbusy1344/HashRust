@@ -19,6 +19,7 @@ use std::ffi::OsString;
 use std::io;
 use std::io::BufRead;
 use std::str::FromStr;
+use whirlpool::Whirlpool;
 
 /// Call the inner main function, and show help if there is an error
 fn main() -> anyhow::Result<()> {
@@ -247,6 +248,8 @@ fn call_hasher(algo: HashAlgorithm, path: &str) -> anyhow::Result<BasicHash> {
         HashAlgorithm::SHA3_256 => hash_file::<Sha3_256>(path),
         HashAlgorithm::SHA3_384 => hash_file::<Sha3_384>(path),
         HashAlgorithm::SHA3_512 => hash_file::<Sha3_512>(path),
+        // WHIRLPOOL
+        HashAlgorithm::WHIRLPOOL => hash_file::<Whirlpool>(path),
     }
 }
 

@@ -25,6 +25,8 @@ pub enum HashAlgorithm {
     SHA3_384,
     #[strum(serialize = "SHA3-512", serialize = "SHA3_512")]
     SHA3_512,
+    #[strum(serialize = "WHIRLPOOL")]
+    WHIRLPOOL,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -80,6 +82,6 @@ OPTIONS:
     -l, --limit [num]            Limit number of files processed
     
 Algorithm can be:
-    MD5, SHA1, 
+    MD5, SHA1, WHIRLPOOL,
     SHA2 / SHA2-256, SHA2-384, SHA2-512, 
     SHA3 / SHA3-256 (default), SHA3-384, SHA3-512";
