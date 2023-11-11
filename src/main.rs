@@ -55,7 +55,7 @@ fn inner_main() -> anyhow::Result<()> {
 
     if algo.is_err() {
         return Err(anyhow::anyhow!(
-            "Algorithm can be: MD5, SHA1, SHA2 / SHA2-256, SHA2-384, SHA2-512, SHA3 / SHA3-256, SHA3-384, SHA3-512. Default is {DEFAULT_HASH:?}",
+            "Algorithm can be: MD5, SHA1, SHA2 / SHA2-256, SHA2-384, SHA2-512, SHA3 / SHA3-256, SHA3-384, SHA3-512, WHIRLPOOL. Default is {DEFAULT_HASH:?}",
         ));
     }
 
