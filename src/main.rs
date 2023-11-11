@@ -8,6 +8,7 @@ mod hasher;
 use crate::classes::{
     BasicHash, ConfigSettings, HashAlgorithm, DEFAULT_HASH, GIT_VERSION_SHORT, HELP, VERSION,
 };
+use blake2::{Blake2b512, Blake2s256};
 use glob::GlobResult;
 use hasher::{file_exists, hash_file};
 use md5::Md5;
@@ -55,7 +56,7 @@ fn inner_main() -> anyhow::Result<()> {
 
     if algo.is_err() {
         return Err(anyhow::anyhow!(
-            "Algorithm can be: MD5, SHA1, SHA2 / SHA2-256, SHA2-384, SHA2-512, SHA3 / SHA3-256, SHA3-384, SHA3-512, WHIRLPOOL. Default is {DEFAULT_HASH:?}",
+            "Algorithm can be: MD5, SHA1, SHA2 / SHA2-256, SHA2-384, SHA2-512, SHA3 / SHA3-256, SHA3-384, SHA3-512, WHIRLPOOL, BLAKE2S-256, BLAKE2B-512. Default is {DEFAULT_HASH:?}",
         ));
     }
 
@@ -250,6 +251,9 @@ fn call_hasher(algo: HashAlgorithm, path: &str) -> anyhow::Result<BasicHash> {
         HashAlgorithm::SHA3_512 => hash_file::<Sha3_512>(path),
         // WHIRLPOOL
         HashAlgorithm::WHIRLPOOL => hash_file::<Whirlpool>(path),
+        // BLAKE2
+        HashAlgorithm::BLAKE2S256 => hash_file::<Blake2s256>(path),
+        HashAlgorithm::BLAKE2B512 => hash_file::<Blake2b512>(path),
     }
 }
 

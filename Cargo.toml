@@ -22,4 +22,5 @@ sha1 = "> 0.10.4"
 sha2 = "> 0.10.4"
 sha3 = "> 0.10.5"
 whirlpool = ">= 0.10.4"
+blake2 = ">= 0.10.6"
 strum = { version = ">= 0.24.1", features = ["derive"] }
