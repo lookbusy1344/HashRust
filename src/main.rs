@@ -4,6 +4,7 @@
 
 mod classes;
 mod hasher;
+mod unit_tests;
 
 use crate::classes::{
     BasicHash, ConfigSettings, HashAlgorithm, DEFAULT_HASH, GIT_VERSION_SHORT, HELP, VERSION,
