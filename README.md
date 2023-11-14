@@ -5,7 +5,7 @@
 ## A small CLI project to hash files using various algorithms, using Rust
 
 HashRust is a command-line util for hashing files. Supports `MD5, SHA1, SHA2, SHA3, Blake2` and `Whirlpool`.
-Multi-threaded by default using Rayon. Use a single thread with `-s`
+Multi-threaded by default using Rayon.
 
 
 ## Building
@@ -41,7 +41,7 @@ Or pipe in a list of files:
 
 ```
     -a, --algorithm [algorithm]  Hash algorithm to use
-    -l, --limit [num]            Limit number of files processed
+    -l, --limit [num]            Limit number of files processed (eg only process the first one)
 ```
     
 ## Algorithms supported
@@ -50,7 +50,9 @@ Or pipe in a list of files:
     MD5, SHA1,
     WHIRLPOOL, BLAKE2S-256, BLAKE2B-512,
     SHA2 / SHA2-256, SHA2-384, SHA2-512, 
-    SHA3 / SHA3-256 (default), SHA3-384, SHA3-512
+    SHA3 / SHA3-256, SHA3-384, SHA3-512
+
+    The default is SHA3-256
 ```
 
 ## Powershell integration
