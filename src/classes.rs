@@ -15,6 +15,8 @@ pub enum HashAlgorithm {
     SHA1,
     #[strum(serialize = "SHA2", serialize = "SHA2-256", serialize = "SHA2_256")]
     SHA2_256,
+    #[strum(serialize = "SHA2-224", serialize = "SHA2_224")]
+    SHA2_224,
     #[strum(serialize = "SHA2-384", serialize = "SHA2_384")]
     SHA2_384,
     #[strum(serialize = "SHA3", serialize = "SHA3-256", serialize = "SHA3_256")]
@@ -87,5 +89,5 @@ OPTIONS:
     
 Algorithm can be:
     MD5, SHA1, WHIRLPOOL, BLAKE2S-256, BLAKE2B-512,
-    SHA2 / SHA2-256, SHA2-384, SHA2-512, 
+    SHA2 / SHA2-256, SHA-224, SHA2-384, SHA2-512, 
     SHA3 / SHA3-256 (default), SHA3-384, SHA3-512";

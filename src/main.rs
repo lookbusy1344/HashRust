@@ -15,7 +15,7 @@ use hasher::{file_exists, hash_file};
 use md5::Md5;
 use rayon::prelude::*;
 use sha1::Sha1;
-use sha2::{Sha256, Sha384, Sha512};
+use sha2::{Sha224, Sha256, Sha384, Sha512};
 use sha3::{Sha3_256, Sha3_384, Sha3_512};
 use std::ffi::OsString;
 use std::io;
@@ -57,7 +57,7 @@ fn inner_main() -> anyhow::Result<()> {
 
     if algo.is_err() {
         return Err(anyhow::anyhow!(
-            "Algorithm can be: MD5, SHA1, SHA2 / SHA2-256, SHA2-384, SHA2-512, SHA3 / SHA3-256, SHA3-384, SHA3-512, WHIRLPOOL, BLAKE2S-256, BLAKE2B-512. Default is {DEFAULT_HASH:?}",
+            "Algorithm can be: MD5, SHA1, SHA2 / SHA2-256, SHA2-224, SHA2-384, SHA2-512, SHA3 / SHA3-256, SHA3-384, SHA3-512, WHIRLPOOL, BLAKE2S-256, BLAKE2B-512. Default is {DEFAULT_HASH:?}",
         ));
     }
 
@@ -243,6 +243,7 @@ fn call_hasher(algo: HashAlgorithm, path: &str) -> anyhow::Result<BasicHash> {
         HashAlgorithm::MD5 => hash_file::<Md5>(path),
         HashAlgorithm::SHA1 => hash_file::<Sha1>(path),
         // SHA2
+        HashAlgorithm::SHA2_224 => hash_file::<Sha224>(path),
         HashAlgorithm::SHA2_256 => hash_file::<Sha256>(path),
         HashAlgorithm::SHA2_384 => hash_file::<Sha384>(path),
         HashAlgorithm::SHA2_512 => hash_file::<Sha512>(path),
