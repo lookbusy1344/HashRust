@@ -28,11 +28,11 @@ pub enum HashAlgorithm {
     #[strum(serialize = "SHA3-512", serialize = "SHA3_512")]
     SHA3_512,
     #[strum(serialize = "WHIRLPOOL")]
-    WHIRLPOOL,
+    Whirlpool,
     #[strum(serialize = "BLAKE2B-512", serialize = "BLAKE2B_512")]
-    BLAKE2B512,
+    Blake2B512,
     #[strum(serialize = "BLAKE2S-256", serialize = "BLAKE2S_256")]
-    BLAKE2S256,
+    Blake2S256,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]

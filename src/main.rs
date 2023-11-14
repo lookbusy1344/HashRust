@@ -252,10 +252,10 @@ fn call_hasher(algo: HashAlgorithm, path: &str) -> anyhow::Result<BasicHash> {
         HashAlgorithm::SHA3_384 => hash_file::<Sha3_384>(path),
         HashAlgorithm::SHA3_512 => hash_file::<Sha3_512>(path),
         // WHIRLPOOL
-        HashAlgorithm::WHIRLPOOL => hash_file::<Whirlpool>(path),
+        HashAlgorithm::Whirlpool => hash_file::<Whirlpool>(path),
         // BLAKE2
-        HashAlgorithm::BLAKE2S256 => hash_file::<Blake2s256>(path),
-        HashAlgorithm::BLAKE2B512 => hash_file::<Blake2b512>(path),
+        HashAlgorithm::Blake2S256 => hash_file::<Blake2s256>(path),
+        HashAlgorithm::Blake2B512 => hash_file::<Blake2b512>(path),
     }
 }
 
