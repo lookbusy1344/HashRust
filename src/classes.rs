@@ -9,6 +9,8 @@ pub const GIT_VERSION_SHORT: &str = git_version!(args = ["--abbrev=14", "--alway
 #[derive(Debug, Copy, Clone, PartialEq, Eq, EnumString)]
 #[strum(ascii_case_insensitive)]
 pub enum HashAlgorithm {
+    #[strum(serialize = "CRC32", serialize = "CRC-32")]
+    CRC32,
     #[strum(serialize = "MD5", serialize = "MD-5")]
     MD5,
     #[strum(serialize = "SHA1", serialize = "SHA-1")]
@@ -88,6 +90,6 @@ OPTIONS:
     -l, --limit [num]            Limit number of files processed
     
 Algorithm can be:
-    MD5, SHA1, WHIRLPOOL, BLAKE2S-256, BLAKE2B-512,
+    CRC32, MD5, SHA1, WHIRLPOOL, BLAKE2S-256, BLAKE2B-512,
     SHA2 / SHA2-256, SHA-224, SHA2-384, SHA2-512, 
     SHA3 / SHA3-256 (default), SHA3-384, SHA3-512";

@@ -14,7 +14,7 @@ pub fn hash_file<D: Digest>(filename: &str) -> anyhow::Result<BasicHash> {
 
     let file = File::open(filename)?;
     let mut reader = BufReader::new(file);
-    let mut buffer = [0u8; BUFFER_SIZE]; //vec![0; bsize];
+    let mut buffer = [0u8; BUFFER_SIZE];
 
     let mut hasher = D::new();
     loop {
@@ -28,6 +28,30 @@ pub fn hash_file<D: Digest>(filename: &str) -> anyhow::Result<BasicHash> {
     // this is now genericarray<u8, size> which implements lowerhex. Basic arrays do not
     let h = hasher.finalize();
     Ok(BasicHash(hex::encode(h)))
+}
+
+/// crc32fast doesnt seem to implement Digest, so we have to have a custom function for it
+pub fn hash_file_crc32(filename: &str) -> anyhow::Result<BasicHash> {
+    if !file_exists(filename) {
+        return Err(anyhow::anyhow!("File not found: {}", filename));
+    }
+
+    let file = File::open(filename)?;
+    let mut reader = BufReader::new(file);
+    let mut buffer = [0u8; BUFFER_SIZE];
+
+    let mut hasher = crc32fast::Hasher::new();
+    loop {
+        let n = reader.read(&mut buffer)?;
+        if n == 0 {
+            break;
+        }
+        hasher.update(&buffer[..n]);
+    }
+
+    // crc32 is just as u32, so we have to convert it to a string
+    let h = hasher.finalize();
+    Ok(BasicHash(h.to_string()))
 }
 
 /// take a string and check if file exists
