@@ -1,4 +1,5 @@
 use crate::classes::BasicHash;
+use byteorder::{BigEndian, ByteOrder};
 use digest::Digest;
 use std::fs::File;
 use std::io::{BufReader, Read};
@@ -7,7 +8,7 @@ use std::path::Path;
 const BUFFER_SIZE: usize = 4096;
 
 /// Hash a file using the given hasher as a Digest implementation, eg `Sha1`, `Sha256`, `Sha3_256`
-pub fn hash_file<D: Digest>(filename: &str) -> anyhow::Result<BasicHash> {
+fn hash_file<D: Digest>(filename: &str, ashex: bool) -> anyhow::Result<BasicHash> {
     if !file_exists(filename) {
         return Err(anyhow::anyhow!("File not found: {}", filename));
     }
@@ -27,7 +28,27 @@ pub fn hash_file<D: Digest>(filename: &str) -> anyhow::Result<BasicHash> {
 
     // this is now genericarray<u8, size> which implements lowerhex. Basic arrays do not
     let hasharray = hasher.finalize();
-    Ok(BasicHash(hex::encode(hasharray)))
+
+    let res = if ashex {
+        // convert hasharray into a hex string
+        BasicHash(hex::encode(hasharray))
+    } else {
+        // convert hasharray into a u32
+        let number = BigEndian::read_u32(hasharray.as_ref());
+        BasicHash(format!("{:010}", number))
+    };
+
+    Ok(res)
+}
+
+#[inline]
+pub fn hash_file_hex<D: Digest>(filename: &str) -> anyhow::Result<BasicHash> {
+    hash_file::<D>(filename, true)
+}
+
+#[inline]
+pub fn hash_file_u32<D: Digest>(filename: &str) -> anyhow::Result<BasicHash> {
+    hash_file::<D>(filename, false)
 }
 
 // / crc32fast doesnt seem to implement Digest, so we have to have a custom function for it

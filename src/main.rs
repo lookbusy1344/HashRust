@@ -13,7 +13,7 @@ use crate::classes::{
 //use crate::hasher::hash_file_crc32;
 use blake2::{Blake2b512, Blake2s256};
 use glob::GlobResult;
-use hasher::{file_exists, hash_file};
+use hasher::{file_exists, hash_file_hex, hash_file_u32};
 use md5::Md5;
 use rayon::prelude::*;
 use sha1::Sha1;
@@ -242,23 +242,23 @@ fn file_hashes_mt(config: &ConfigSettings, paths: &Vec<String>) {
 fn call_hasher(algo: HashAlgorithm, path: &str) -> anyhow::Result<BasicHash> {
     match algo {
         // old algorithms
-        HashAlgorithm::CRC32 => hash_file::<crc32::Crc32>(path),
-        HashAlgorithm::MD5 => hash_file::<Md5>(path),
-        HashAlgorithm::SHA1 => hash_file::<Sha1>(path),
+        HashAlgorithm::CRC32 => hash_file_u32::<crc32::Crc32>(path),
+        HashAlgorithm::MD5 => hash_file_hex::<Md5>(path),
+        HashAlgorithm::SHA1 => hash_file_hex::<Sha1>(path),
         // SHA2
-        HashAlgorithm::SHA2_224 => hash_file::<Sha224>(path),
-        HashAlgorithm::SHA2_256 => hash_file::<Sha256>(path),
-        HashAlgorithm::SHA2_384 => hash_file::<Sha384>(path),
-        HashAlgorithm::SHA2_512 => hash_file::<Sha512>(path),
+        HashAlgorithm::SHA2_224 => hash_file_hex::<Sha224>(path),
+        HashAlgorithm::SHA2_256 => hash_file_hex::<Sha256>(path),
+        HashAlgorithm::SHA2_384 => hash_file_hex::<Sha384>(path),
+        HashAlgorithm::SHA2_512 => hash_file_hex::<Sha512>(path),
         // SHA3
-        HashAlgorithm::SHA3_256 => hash_file::<Sha3_256>(path),
-        HashAlgorithm::SHA3_384 => hash_file::<Sha3_384>(path),
-        HashAlgorithm::SHA3_512 => hash_file::<Sha3_512>(path),
+        HashAlgorithm::SHA3_256 => hash_file_hex::<Sha3_256>(path),
+        HashAlgorithm::SHA3_384 => hash_file_hex::<Sha3_384>(path),
+        HashAlgorithm::SHA3_512 => hash_file_hex::<Sha3_512>(path),
         // WHIRLPOOL
-        HashAlgorithm::Whirlpool => hash_file::<Whirlpool>(path),
+        HashAlgorithm::Whirlpool => hash_file_hex::<Whirlpool>(path),
         // BLAKE2
-        HashAlgorithm::Blake2S256 => hash_file::<Blake2s256>(path),
-        HashAlgorithm::Blake2B512 => hash_file::<Blake2b512>(path),
+        HashAlgorithm::Blake2S256 => hash_file_hex::<Blake2s256>(path),
+        HashAlgorithm::Blake2B512 => hash_file_hex::<Blake2b512>(path),
     }
 }
 

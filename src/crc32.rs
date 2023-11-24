@@ -6,6 +6,9 @@ use std::io::Write;
 
 pub use digest::Digest;
 
+// Updated from https://github.com/ajungren/crc32_digest/blob/master/src/lib.rs
+// The original is Rust 2018 and doesnt seem to support the new digest crate
+
 #[derive(Clone, Default)]
 pub struct Crc32(Hasher);
 
@@ -39,18 +42,13 @@ impl OutputSizeUser for Crc32 {
 impl FixedOutput for Crc32 {
     #[inline]
     fn finalize_into(self, out: &mut Output<Self>) {
+        // FixedOutput trait requires that the output is written into the given buffer of bytes
+        // but crc32fast::Hasher::finalize() returns a u32, so we have to convert it
         let result = self.0.finalize();
         let r2 = result.to_le_bytes();
         out.copy_from_slice(&r2);
     }
 }
-
-// impl Input for Crc32 {
-//     #[inline]
-//     fn input<B: AsRef<[u8]>>(&mut self, data: B) {
-//         self.0.update(data.as_ref());
-//     }
-// }
 
 impl Reset for Crc32 {
     #[inline]
@@ -71,5 +69,3 @@ impl Write for Crc32 {
         Ok(())
     }
 }
-
-//impl_write!(Crc32);
