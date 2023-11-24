@@ -160,6 +160,7 @@ dependencies = [
  "blake2",
  "crc32fast",
  "digest",
+ "generic-array",
  "git-version",
  "glob",
  "hex",

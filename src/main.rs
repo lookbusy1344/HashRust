@@ -3,13 +3,14 @@
 // #![allow(unused_variables)]
 
 mod classes;
+mod crc32;
 mod hasher;
 mod unit_tests;
 
 use crate::classes::{
     BasicHash, ConfigSettings, HashAlgorithm, DEFAULT_HASH, GIT_VERSION_SHORT, HELP, VERSION,
 };
-use crate::hasher::hash_file_crc32;
+//use crate::hasher::hash_file_crc32;
 use blake2::{Blake2b512, Blake2s256};
 use glob::GlobResult;
 use hasher::{file_exists, hash_file};
@@ -241,7 +242,7 @@ fn file_hashes_mt(config: &ConfigSettings, paths: &Vec<String>) {
 fn call_hasher(algo: HashAlgorithm, path: &str) -> anyhow::Result<BasicHash> {
     match algo {
         // old algorithms
-        HashAlgorithm::CRC32 => hash_file_crc32(path),
+        HashAlgorithm::CRC32 => hash_file::<crc32::Crc32>(path),
         HashAlgorithm::MD5 => hash_file::<Md5>(path),
         HashAlgorithm::SHA1 => hash_file::<Sha1>(path),
         // SHA2
