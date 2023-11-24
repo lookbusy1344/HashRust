@@ -1,5 +1,5 @@
 use crate::classes::BasicHash;
-use byteorder::{BigEndian, ByteOrder};
+use byteorder::{ByteOrder, LittleEndian};
 use digest::Digest;
 use std::fs::File;
 use std::io::{BufReader, Read};
@@ -34,7 +34,7 @@ fn hash_file<D: Digest>(filename: &str, ashex: bool) -> anyhow::Result<BasicHash
         BasicHash(hex::encode(hasharray))
     } else {
         // convert hasharray into a u32
-        let number = BigEndian::read_u32(hasharray.as_ref());
+        let number = LittleEndian::read_u32(hasharray.as_ref());
         BasicHash(format!("{:010}", number))
     };
 
