@@ -5,8 +5,11 @@ use std::io::Write;
 
 pub use digest::Digest;
 
-// Updated from https://github.com/ajungren/crc32_digest/blob/master/src/lib.rs
+// Updated from https://github.com/ajungren/crc32_digest
 // The original is Rust 2018 and doesnt seem to support the new digest crate
+
+// Updated version:
+// https://github.com/lookbusy1344/crc32_digest
 
 #[derive(Clone, Default)]
 pub struct Crc32(Hasher);
@@ -15,12 +18,14 @@ pub struct Crc32(Hasher);
 impl Crc32 {
     /// Creates a new `Crc32`.
     #[inline]
+    #[allow(clippy::must_use_candidate)]
     pub fn new() -> Self {
         Self(Hasher::new())
     }
 
     /// Creates a new `Crc32` initialized with the given state.
     #[inline]
+    #[allow(clippy::must_use_candidate)]
     pub fn from_state(state: u32) -> Self {
         Self(Hasher::new_with_initial(state))
     }
@@ -45,7 +50,7 @@ impl FixedOutput for Crc32 {
         // FixedOutput trait requires that the output is written into the given buffer of bytes
         // but crc32fast::Hasher::finalize() returns a u32, so we have to convert it
         let result = self.0.finalize();
-        let r2 = result.to_le_bytes();
+        let r2 = result.to_be_bytes();
         out.copy_from_slice(&r2);
     }
 }
@@ -66,6 +71,7 @@ impl Write for Crc32 {
 
     #[inline]
     fn flush(&mut self) -> std::io::Result<()> {
+        // flush is empty because the write data is handled immediately
         Ok(())
     }
 }
