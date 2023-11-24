@@ -1,6 +1,6 @@
 use crate::classes::BasicHash;
 use byteorder::{ByteOrder, LittleEndian};
-use digest::Digest;
+use digest::{Digest, Output};
 use std::fs::File;
 use std::io::{BufReader, Read};
 use std::path::Path;
@@ -8,7 +8,9 @@ use std::path::Path;
 const BUFFER_SIZE: usize = 4096;
 
 /// Hash a file using the given hasher as a Digest implementation, eg `Sha1`, `Sha256`, `Sha3_256`
-fn hash_file<D: Digest>(filename: &str, ashex: bool) -> anyhow::Result<BasicHash> {
+/// Returns Output<D>, which is an owned fixed size array of u8
+/// Output<D> = `GenericArray<u8, <D as OutputSizeUser>::OutputSize>`
+fn hash_file<D: Digest>(filename: &str) -> anyhow::Result<Output<D>> {
     if !file_exists(filename) {
         return Err(anyhow::anyhow!("File not found: {}", filename));
     }
@@ -26,29 +28,23 @@ fn hash_file<D: Digest>(filename: &str, ashex: bool) -> anyhow::Result<BasicHash
         hasher.update(&buffer[..n]);
     }
 
-    // this is now genericarray<u8, size> which implements lowerhex. Basic arrays do not
+    // Output<T> = GenericArray<u8, <T as OutputSizeUser>::OutputSize>
+    // just return this directly to avoid an extra allocation
     let hasharray = hasher.finalize();
-
-    let res = if ashex {
-        // convert hasharray into a hex string
-        BasicHash(hex::encode(hasharray))
-    } else {
-        // convert hasharray into a u32
-        let number = LittleEndian::read_u32(hasharray.as_ref());
-        BasicHash(format!("{:010}", number))
-    };
-
-    Ok(res)
+    Ok(hasharray)
 }
 
 #[inline]
 pub fn hash_file_hex<D: Digest>(filename: &str) -> anyhow::Result<BasicHash> {
-    hash_file::<D>(filename, true)
+    let h = hash_file::<D>(filename)?;
+    Ok(BasicHash(hex::encode(h)))
 }
 
 #[inline]
 pub fn hash_file_u32<D: Digest>(filename: &str) -> anyhow::Result<BasicHash> {
-    hash_file::<D>(filename, false)
+    let h = hash_file::<D>(filename)?;
+    let number = LittleEndian::read_u32(&h);
+    Ok(BasicHash(format!("{number:010}")))
 }
 
 // / crc32fast doesnt seem to implement Digest, so we have to have a custom function for it

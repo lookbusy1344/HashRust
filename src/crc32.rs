@@ -1,7 +1,6 @@
 use crc32fast::Hasher;
 use digest::{FixedOutput, HashMarker, Output, OutputSizeUser, Reset, Update};
 use generic_array::typenum::U4;
-//use generic_array::GenericArray;
 use std::io::Write;
 
 pub use digest::Digest;
@@ -12,6 +11,7 @@ pub use digest::Digest;
 #[derive(Clone, Default)]
 pub struct Crc32(Hasher);
 
+#[allow(dead_code)]
 impl Crc32 {
     /// Creates a new `Crc32`.
     #[inline]
