@@ -25,9 +25,9 @@ use std::io::BufRead;
 use std::str::FromStr;
 use whirlpool::Whirlpool;
 
-/// Call the inner main function, and show help if there is an error
+/// Call the inner worker function, and show help if there is an error
 fn main() -> anyhow::Result<()> {
-    let result = inner_main();
+    let result = worker_func();
 
     if let Err(e) = result {
         // there was an error, show help
@@ -39,8 +39,8 @@ fn main() -> anyhow::Result<()> {
     Ok(())
 }
 
-/// Inner main function, which can return an error
-fn inner_main() -> anyhow::Result<()> {
+/// main worker function for entire app
+fn worker_func() -> anyhow::Result<()> {
     let mut pargs = pico_args::Arguments::from_env();
 
     // diagnostic code to set the parameters
