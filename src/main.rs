@@ -151,7 +151,7 @@ fn get_paths_from_stdin(config: &ConfigSettings) -> anyhow::Result<Vec<String>> 
     for line in stdin.lock().lines() {
         match line {
             Ok(line) => {
-                if file_exists(line.as_str()) {
+                if file_exists(&line) {
                     lines.push(line);
                 } else if config.debugmode {
                     eprintln!("Not a file: {line}");

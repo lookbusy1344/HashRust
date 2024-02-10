@@ -72,10 +72,10 @@ pub fn hash_file_u32<D: Digest>(filename: &str) -> anyhow::Result<BasicHash> {
 //     Ok(BasicHash(result))
 // }
 
-/// take a string and check if file exists
-pub fn file_exists(path: &str) -> bool {
-    let path = Path::new(path);
-    path.exists() && path.is_file()
+/// check if file exists
+pub fn file_exists<P: AsRef<Path>>(path: P) -> bool {
+    let path_ref = path.as_ref();
+    path_ref.exists() && path_ref.is_file()
 }
 
 // /// take a string and get the size of the file
