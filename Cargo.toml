@@ -9,6 +9,7 @@ edition = "2021"
 panic = 'abort'
 codegen-units = 1
 lto = 'fat'
+strip = true
 
 [dependencies]
 strum = { version = ">= 0.24.1", features = ["derive"] }
