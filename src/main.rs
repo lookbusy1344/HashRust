@@ -192,7 +192,7 @@ fn get_paths_matching_glob(config: &ConfigSettings, pattern: &str) -> anyhow::Re
 }
 
 /// output all file hashes matching a pattern, directly to stdout. Single-threaded
-fn file_hashes_st(config: &ConfigSettings, paths: &Vec<String>) {
+fn file_hashes_st(config: &ConfigSettings, paths: &[String]) {
     if config.debugmode {
         eprintln!("Algorithm: {:?}", config.algorithm);
     }
@@ -214,7 +214,7 @@ fn file_hashes_st(config: &ConfigSettings, paths: &Vec<String>) {
 }
 
 /// output all file hashes matching a pattern, directly to stdout. Multi-threaded version
-fn file_hashes_mt(config: &ConfigSettings, paths: &Vec<String>) {
+fn file_hashes_mt(config: &ConfigSettings, paths: &[String]) {
     if config.debugmode {
         eprintln!("Algorithm: {:?}", config.algorithm);
     }
