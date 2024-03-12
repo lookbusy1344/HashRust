@@ -73,7 +73,7 @@ pub fn hash_file_u32<D: Digest>(filename: &str) -> anyhow::Result<BasicHash> {
 // }
 
 /// check if file exists
-pub fn file_exists<P: AsRef<Path>>(path: P) -> bool {
+pub fn file_exists(path: impl AsRef<Path>) -> bool {
     let path_ref = path.as_ref();
     path_ref.exists() && path_ref.is_file()
 }
