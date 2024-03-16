@@ -178,7 +178,6 @@ fn get_paths_matching_glob(config: &ConfigSettings, pattern: &str) -> anyhow::Re
 
     // filter out non-files
     let pathglobs: Vec<GlobResult> = temppaths
-        .into_iter()
         .filter(|x| x.as_ref().unwrap().is_file())
         .collect();
 
