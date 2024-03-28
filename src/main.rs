@@ -128,14 +128,8 @@ fn worker_func() -> anyhow::Result<()> {
 
     if config.singlethread || paths.len() == 1 {
         // asked for single thread, or only one path given
-        if config.debugmode {
-            eprintln!("Single-threaded mode");
-        }
         file_hashes_st(&config, &paths);
     } else {
-        if config.debugmode {
-            eprintln!("Multi-threaded mode");
-        }
         // multi-threaded
         file_hashes_mt(&config, &paths);
     }
@@ -193,6 +187,7 @@ fn get_paths_matching_glob(config: &ConfigSettings, pattern: &str) -> anyhow::Re
 /// output all file hashes matching a pattern, directly to stdout. Single-threaded
 fn file_hashes_st(config: &ConfigSettings, paths: &[String]) {
     if config.debugmode {
+        eprintln!("Single-threaded mode");
         eprintln!("Algorithm: {:?}", config.algorithm);
     }
 
@@ -215,6 +210,7 @@ fn file_hashes_st(config: &ConfigSettings, paths: &[String]) {
 /// output all file hashes matching a pattern, directly to stdout. Multi-threaded version
 fn file_hashes_mt(config: &ConfigSettings, paths: &[String]) {
     if config.debugmode {
+        eprintln!("Multi-threaded mode");
         eprintln!("Algorithm: {:?}", config.algorithm);
     }
 
