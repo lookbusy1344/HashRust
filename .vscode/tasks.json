@@ -2,67 +2,54 @@
 	"version": "2.0.0",
 	"tasks": [
 		{
-			"type": "cargo",
-			"command": "run",
-			"problemMatcher": [
-				"$rustc"
-			],
-			"label": "rust: cargo run"
-		},
-		{
-			"type": "cargo",
-			"command": "build",
+			"type": "shell",
+			"command": "cargo",
 			"args": [
+				"build",
 				"--color=always"
-			],
-			"problemMatcher": [
-				"$rustc"
 			],
 			"group": {
 				"kind": "build",
 				"isDefault": true
 			},
+			"problemMatcher": [
+				"$rustc"
+			],
 			"label": "rust: cargo build"
 		},
 		{
-			"type": "cargo",
-			"command": "check",
+			"type": "shell",
+			"command": "cargo",
 			"args": [
+				"check",
 				"--color=always"
-			],
-			"problemMatcher": [
-				"$rustc"
 			],
 			"group": {
 				"kind": "build",
 				"isDefault": false
 			},
-			"label": "rust: cargo check"
-		},
-		{
-			"type": "cargo",
-			"command": "clippy",
 			"problemMatcher": [
 				"$rustc"
 			],
-			"group": "build",
-			"label": "rust: cargo clippy"
+			"label": "rust: cargo check"
 		},
 		{
-			"type": "cargo",
-			"command": "clippy",
+			"type": "shell",
+			"command": "cargo",
 			"args": [
+				"clippy",
+				"--color=always"
 				"--",
 				"-D", "clippy::all",
 				"-D", "clippy::pedantic"
 			],
-			"problemMatcher": [
-				"$rustc"
-			],
 			"group": {
 				"kind": "build",
 				"isDefault": false
 			},
+			"problemMatcher": [
+				"$rustc"
+			],
 			"label": "rust: cargo clippy pedantic"
 		}
 	]
