@@ -5,15 +5,16 @@ use std::fs::File;
 use std::io::{BufReader, Read};
 use std::path::Path;
 
-const BUFFER_SIZE: usize = 4096;
+const BUFFER_SIZE: usize = 4096 * 8;
+const WHOLE_FILE_LIMIT: u64 = 200_000; // 200KB
 
 /// Hash a file using the given hasher as a Digest implementation, eg `Sha1`, `Sha256`, `Sha3_256`
 /// Returns Output<D>, which is an owned fixed size array of u8
 /// Output<D> = `GenericArray<u8, <D as OutputSizeUser>::OutputSize>`
-fn hash_file<D: Digest>(filename: &str) -> anyhow::Result<Output<D>> {
-    if !file_exists(filename) {
-        return Err(anyhow::anyhow!("File not found: {}", filename));
-    }
+fn hash_file_buffer<D: Digest>(filename: &str) -> anyhow::Result<Output<D>> {
+    // if !file_exists(filename) {
+    //     return Err(anyhow::anyhow!("File not found: {}", filename));
+    // }
 
     let file = File::open(filename)?;
     let mut reader = BufReader::new(file);
@@ -32,6 +33,31 @@ fn hash_file<D: Digest>(filename: &str) -> anyhow::Result<Output<D>> {
     // just return this directly to avoid an extra allocation
     let hasharray = hasher.finalize();
     Ok(hasharray)
+}
+
+/// Hash the entire file at once
+fn hash_file_whole<D: Digest>(filename: &str) -> anyhow::Result<Output<D>> {
+    // if !file_exists(filename) {
+    //     return Err(anyhow::anyhow!("File not found: {}", filename));
+    // }
+
+    let data = std::fs::read(filename)?;
+    let mut hasher = D::new();
+    hasher.update(&data);
+
+    let hasharray = hasher.finalize();
+    Ok(hasharray)
+}
+
+/// Wrapper function to hash a file. If the file is smaller than `WHOLE_FILE_LIMIT`, it will hash the entire file at once.
+fn hash_file<D: Digest>(filename: &str) -> anyhow::Result<Output<D>> {
+    let size = file_size(filename)?;
+
+    if size <= WHOLE_FILE_LIMIT {
+        hash_file_whole::<D>(filename)
+    } else {
+        hash_file_buffer::<D>(filename)
+    }
 }
 
 #[inline]
@@ -78,12 +104,12 @@ pub fn file_exists(path: impl AsRef<Path>) -> bool {
     path_ref.exists() && path_ref.is_file()
 }
 
-// /// take a string and get the size of the file
-// fn file_size(path: &str) -> anyhow::Result<u64> {
-//     let path = Path::new(path);
-//     if path.exists() && path.is_file() {
-//         Ok(path.metadata()?.len())
-//     } else {
-//         Err(anyhow::anyhow!("File not found: {}", path.display()))
-//     }
-// }
+/// get the size of the file
+fn file_size(path: &str) -> anyhow::Result<u64> {
+    let path = Path::new(path);
+    if path.exists() && path.is_file() {
+        Ok(path.metadata()?.len())
+    } else {
+        Err(anyhow::anyhow!("File not found: {}", path.display()))
+    }
+}
