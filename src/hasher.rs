@@ -6,23 +6,28 @@ use std::io::{BufReader, Read};
 use std::path::Path;
 
 const BUFFER_SIZE: usize = 4096 * 8;
-const WHOLE_FILE_LIMIT: u64 = 200_000; // 200KB
 
 /// Hash a file using the given hasher as a Digest implementation, eg `Sha1`, `Sha256`, `Sha3_256`
 /// Returns Output<D>, which is an owned fixed size array of u8
 /// Output<D> = `GenericArray<u8, <D as OutputSizeUser>::OutputSize>`
-fn hash_file_buffer<D: Digest>(filename: &str) -> anyhow::Result<Output<D>> {
+fn hash_file<D: Digest>(filename: &str) -> anyhow::Result<Output<D>> {
     // if !file_exists(filename) {
     //     return Err(anyhow::anyhow!("File not found: {}", filename));
     // }
 
+    let mut filesize = usize::try_from(file_size(filename)?)?;
+    if filesize > BUFFER_SIZE {
+        filesize = BUFFER_SIZE;
+    }
+    //let filesize = usize::try_from(file_size(filename)?).unwrap_or(BUFFER_SIZE).min(BUFFER_SIZE);
+
     let file = File::open(filename)?;
     let mut reader = BufReader::new(file);
-    let mut buffer = Box::new([0u8; BUFFER_SIZE]); // heap-allocated buffer
+    let mut buffer = vec![0; filesize];
 
     let mut hasher = D::new();
     loop {
-        let n = reader.read(&mut *buffer)?;
+        let n = reader.read(&mut buffer)?;
         if n == 0 {
             break;
         }
@@ -35,30 +40,30 @@ fn hash_file_buffer<D: Digest>(filename: &str) -> anyhow::Result<Output<D>> {
     Ok(hasharray)
 }
 
-/// Hash the entire file at once
-fn hash_file_whole<D: Digest>(filename: &str) -> anyhow::Result<Output<D>> {
-    // if !file_exists(filename) {
-    //     return Err(anyhow::anyhow!("File not found: {}", filename));
-    // }
+// /// Hash the entire file at once
+// fn hash_file_whole<D: Digest>(filename: &str) -> anyhow::Result<Output<D>> {
+//     // if !file_exists(filename) {
+//     //     return Err(anyhow::anyhow!("File not found: {}", filename));
+//     // }
 
-    let data = std::fs::read(filename)?;
-    let mut hasher = D::new();
-    hasher.update(&data);
+//     let data = std::fs::read(filename)?;
+//     let mut hasher = D::new();
+//     hasher.update(&data);
 
-    let hasharray = hasher.finalize();
-    Ok(hasharray)
-}
+//     let hasharray = hasher.finalize();
+//     Ok(hasharray)
+// }
 
-/// Wrapper function to hash a file. If the file is smaller than `WHOLE_FILE_LIMIT`, it will hash the entire file at once.
-fn hash_file<D: Digest>(filename: &str) -> anyhow::Result<Output<D>> {
-    let size = file_size(filename)?;
+// /// Wrapper function to hash a file. If the file is smaller than `WHOLE_FILE_LIMIT`, it will hash the entire file at once.
+// fn hash_file<D: Digest>(filename: &str) -> anyhow::Result<Output<D>> {
+//     let size = file_size(filename)?;
 
-    if size <= WHOLE_FILE_LIMIT {
-        hash_file_whole::<D>(filename)
-    } else {
-        hash_file_buffer::<D>(filename)
-    }
-}
+//     if size <= WHOLE_FILE_LIMIT {
+//         hash_file_whole::<D>(filename)
+//     } else {
+//         hash_file_buffer::<D>(filename)
+//     }
+// }
 
 #[inline]
 pub fn hash_file_hex<D: Digest>(filename: &str) -> anyhow::Result<BasicHash> {
