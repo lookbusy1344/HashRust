@@ -18,11 +18,11 @@ fn hash_file_buffer<D: Digest>(filename: &str) -> anyhow::Result<Output<D>> {
 
     let file = File::open(filename)?;
     let mut reader = BufReader::new(file);
-    let mut buffer = [0u8; BUFFER_SIZE];
+    let mut buffer = Box::new([0u8; BUFFER_SIZE]); // heap-allocated buffer
 
     let mut hasher = D::new();
     loop {
-        let n = reader.read(&mut buffer)?;
+        let n = reader.read(&mut *buffer)?;
         if n == 0 {
             break;
         }
