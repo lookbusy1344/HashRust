@@ -15,15 +15,13 @@ fn hash_file<D: Digest>(filename: &str) -> anyhow::Result<Output<D>> {
     //     return Err(anyhow::anyhow!("File not found: {}", filename));
     // }
 
-    let mut filesize = usize::try_from(file_size(filename)?)?;
-    if filesize > BUFFER_SIZE {
-        filesize = BUFFER_SIZE;
-    }
-    //let filesize = usize::try_from(file_size(filename)?).unwrap_or(BUFFER_SIZE).min(BUFFER_SIZE);
+    let buffersize = usize::try_from(file_size(filename)?)
+        .unwrap_or(BUFFER_SIZE)
+        .min(BUFFER_SIZE);
 
     let file = File::open(filename)?;
     let mut reader = BufReader::new(file);
-    let mut buffer = vec![0; filesize];
+    let mut buffer = vec![0; buffersize];
 
     let mut hasher = D::new();
     loop {
