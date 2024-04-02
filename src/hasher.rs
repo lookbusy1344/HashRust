@@ -26,10 +26,10 @@ fn hash_file<D: Digest>(filename: &str) -> anyhow::Result<Output<D>> {
 
     // ==== diagnostic code to check if buffer is zeroed
     // count elements in buffer that are not zero
-    let non_zero_count = buffer.iter().filter(|&&x| x != 0).count();
-    if non_zero_count != 0 {
-        eprintln!("Buffer not zeroed {non_zero_count} out of {buffersize} in file {filename}");
-    }
+    // let non_zero_count = buffer.iter().filter(|&&x| x != 0).count();
+    // if non_zero_count != 0 {
+    //     eprintln!("Buffer not zeroed {non_zero_count} out of {buffersize} in file {filename}");
+    // }
     // ==== end of diagnostic code
 
     let mut hasher = D::new();
