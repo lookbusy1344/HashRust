@@ -146,9 +146,8 @@ where
 
     // turn the boxed slice into a raw pointer and length
     let raw_ptr = Box::into_raw(maybe_uninit_slice).cast::<T>();
-    let raw_len = std::mem::size_of::<MaybeUninit<T>>() * len;
 
     // now turn it into [T] without initializing the values. This is unsafe because the resulting slice might contain anything
-    let result = unsafe { Box::from_raw(std::slice::from_raw_parts_mut(raw_ptr, raw_len)) };
+    let result = unsafe { Box::from_raw(std::slice::from_raw_parts_mut(raw_ptr, len)) };
     result
 }
