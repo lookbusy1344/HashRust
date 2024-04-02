@@ -134,9 +134,7 @@ fn build_heap_buffer<T: Default + Copy>(len: usize) -> Box<[T]> {
 }
 
 /// Build a heap buffer of a given size, uninitialized
-fn build_heap_buffer_uninitialized<T>(len: usize) -> Box<[T]>
-where
-    MaybeUninit<T>: Clone,
+fn build_heap_buffer_uninitialized<T: Copy>(len: usize) -> Box<[T]>
 {
     // here T must implement Copy, or MaybeUninit<T> must implement Clone
 
