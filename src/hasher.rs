@@ -3,6 +3,7 @@ use byteorder::{BigEndian, ByteOrder};
 use digest::{Digest, Output};
 use std::fs::File;
 use std::io::{BufReader, Read};
+use std::mem::MaybeUninit;
 use std::path::Path;
 
 const BUFFER_SIZE: usize = 4096 * 8;
@@ -21,7 +22,15 @@ fn hash_file<D: Digest>(filename: &str) -> anyhow::Result<Output<D>> {
 
     let file = File::open(filename)?;
     let mut reader = BufReader::new(file);
-    let mut buffer = build_heap_buffer::<u8>(buffersize);
+    let mut buffer = build_heap_buffer_uninitialized(buffersize);
+
+    // ==== diagnostic code to check if buffer is zeroed
+    // count elements in buffer that are not zero
+    let non_zero_count = buffer.iter().filter(|&&x| x != 0).count();
+    if non_zero_count != 0 {
+        eprintln!("Buffer not zeroed {non_zero_count} out of {buffersize} in file {filename}");
+    }
+    // ==== end of diagnostic code
 
     let mut hasher = D::new();
     loop {
@@ -118,7 +127,24 @@ fn file_size(path: &str) -> anyhow::Result<u64> {
 }
 
 /// Build a heap buffer of a given size, filled with default values
+#[allow(dead_code)]
 fn build_heap_buffer<T: Default + Clone>(size: usize) -> Box<[T]> {
     let vec = vec![T::default(); size];
     vec.into_boxed_slice()
+}
+
+/// Build a heap buffer of a given size, uninitialized
+fn build_heap_buffer_uninitialized(size: usize) -> Box<[u8]> {
+    // make a vector of uninitialized values and convert it to a boxed slice
+    let maybe_uninit_vec = vec![MaybeUninit::<u8>::uninit(); size];
+    let maybe_uninit_slice = maybe_uninit_vec.into_boxed_slice();
+
+    // turn the boxed slice into a raw pointer and length
+    //let ptr = Box::into_raw(maybe_uninit_box) as *mut u8;
+    let raw_ptr = Box::into_raw(maybe_uninit_slice).cast::<u8>();
+    let raw_len = std::mem::size_of::<MaybeUninit<u8>>() * size;
+
+    // now turn it into [u8] without initializing the values. This is unsafe because the resulting slice might contain anything
+    let u8_box = unsafe { Box::from_raw(std::slice::from_raw_parts_mut(raw_ptr, raw_len)) };
+    u8_box
 }
