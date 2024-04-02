@@ -134,16 +134,17 @@ fn build_heap_buffer<T: Default + Copy>(len: usize) -> Box<[T]> {
 }
 
 /// Build a heap buffer of a given size, uninitialized
-fn build_heap_buffer_uninitialized<T: Copy>(len: usize) -> Box<[T]>
-{
-    // here T must implement Copy, or MaybeUninit<T> must implement Clone
+fn build_heap_buffer_uninitialized<T: Copy>(len: usize) -> Box<[T]> {
+    let vec = vec![MaybeUninit::<T>::uninit(); len];
+    let slice = vec.into_boxed_slice();
 
-    // make a vector of uninitialized values and convert it to a boxed slice
-    let maybe_uninit_vec = vec![MaybeUninit::<T>::uninit(); len];
-    let maybe_uninit_slice = maybe_uninit_vec.into_boxed_slice();
+    convert_maybeunint_to_initialized(slice)
+}
 
-    // turn the boxed slice into a raw pointer and length
-    let raw_ptr = Box::into_raw(maybe_uninit_slice).cast::<T>();
+/// Convert a `Box<[MaybeUninit<T>]>` to a `Box<[T]>`, unsafe because it doesn't initialize the values
+fn convert_maybeunint_to_initialized<T: Copy>(maybe_uninit: Box<[MaybeUninit<T>]>) -> Box<[T]> {
+    let len = maybe_uninit.len();
+    let raw_ptr = Box::into_raw(maybe_uninit).cast::<T>();
 
     // now turn it into [T] without initializing the values. This is unsafe because the resulting slice might contain anything
     let result = unsafe { Box::from_raw(std::slice::from_raw_parts_mut(raw_ptr, len)) };
