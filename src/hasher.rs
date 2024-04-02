@@ -128,23 +128,27 @@ fn file_size(path: &str) -> anyhow::Result<u64> {
 
 /// Build a heap buffer of a given size, filled with default values
 #[allow(dead_code)]
-fn build_heap_buffer<T: Default + Clone>(size: usize) -> Box<[T]> {
-    let vec = vec![T::default(); size];
+fn build_heap_buffer<T: Default + Copy>(len: usize) -> Box<[T]> {
+    let vec = vec![T::default(); len];
     vec.into_boxed_slice()
 }
 
 /// Build a heap buffer of a given size, uninitialized
-fn build_heap_buffer_uninitialized(size: usize) -> Box<[u8]> {
+fn build_heap_buffer_uninitialized<T>(len: usize) -> Box<[T]>
+where
+    MaybeUninit<T>: Clone,
+{
+    // here T must implement Copy, or MaybeUninit<T> must implement Clone
+
     // make a vector of uninitialized values and convert it to a boxed slice
-    let maybe_uninit_vec = vec![MaybeUninit::<u8>::uninit(); size];
+    let maybe_uninit_vec = vec![MaybeUninit::<T>::uninit(); len];
     let maybe_uninit_slice = maybe_uninit_vec.into_boxed_slice();
 
     // turn the boxed slice into a raw pointer and length
-    //let ptr = Box::into_raw(maybe_uninit_box) as *mut u8;
-    let raw_ptr = Box::into_raw(maybe_uninit_slice).cast::<u8>();
-    let raw_len = std::mem::size_of::<MaybeUninit<u8>>() * size;
+    let raw_ptr = Box::into_raw(maybe_uninit_slice).cast::<T>();
+    let raw_len = std::mem::size_of::<MaybeUninit<T>>() * len;
 
-    // now turn it into [u8] without initializing the values. This is unsafe because the resulting slice might contain anything
-    let u8_box = unsafe { Box::from_raw(std::slice::from_raw_parts_mut(raw_ptr, raw_len)) };
-    u8_box
+    // now turn it into [T] without initializing the values. This is unsafe because the resulting slice might contain anything
+    let result = unsafe { Box::from_raw(std::slice::from_raw_parts_mut(raw_ptr, raw_len)) };
+    result
 }
