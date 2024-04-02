@@ -21,7 +21,7 @@ fn hash_file<D: Digest>(filename: &str) -> anyhow::Result<Output<D>> {
 
     let file = File::open(filename)?;
     let mut reader = BufReader::new(file);
-    let mut buffer = vec![0; buffersize];
+    let mut buffer = build_heap_buffer::<u8>(buffersize);
 
     let mut hasher = D::new();
     loop {
@@ -115,4 +115,10 @@ fn file_size(path: &str) -> anyhow::Result<u64> {
     } else {
         Err(anyhow::anyhow!("File not found: {}", path.display()))
     }
+}
+
+/// Build a heap buffer of a given size, filled with default values
+fn build_heap_buffer<T: Default + Clone>(size: usize) -> Box<[T]> {
+    let vec = vec![T::default(); size];
+    vec.into_boxed_slice()
 }
