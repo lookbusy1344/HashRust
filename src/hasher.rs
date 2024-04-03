@@ -19,17 +19,21 @@ fn hash_file<D: Digest>(filename: &str) -> anyhow::Result<Output<D>> {
         return hash_file_whole::<D>(filename);
     }
 
+    // read the file in chunks
     let file = File::open(filename)?;
     let mut reader = BufReader::new(file);
     let mut buffer = build_heap_buffer(BUFFER_SIZE);
 
     let mut hasher = D::new();
     loop {
-        let n = reader.read(&mut buffer)?;
-        if n == 0 {
-            break;
+        let bytesread = reader.read(&mut buffer)?;
+        if bytesread == 0 {
+            break; // nothing more to read
         }
-        hasher.update(&buffer[..n]);
+        hasher.update(&buffer[..bytesread]);
+        if bytesread < BUFFER_SIZE {
+            break; // we've reached the end of the file
+        }
     }
 
     // Output<T> = GenericArray<u8, <T as OutputSizeUser>::OutputSize>
@@ -108,21 +112,3 @@ fn build_heap_buffer<T: Default + Copy>(len: usize) -> Box<[T]> {
     let vec = vec![T::default(); len];
     vec.into_boxed_slice()
 }
-
-// /// Build a heap buffer of a given size, uninitialized
-// fn build_heap_buffer_uninitialized<T: Copy>(len: usize) -> Box<[T]> {
-//     let vec = vec![MaybeUninit::<T>::uninit(); len];
-//     let slice = vec.into_boxed_slice();
-
-//     convert_maybeunint_to_initialized(slice)
-// }
-
-// /// Convert a `Box<[MaybeUninit<T>]>` to a `Box<[T]>`, unsafe because it doesn't initialize the values
-// fn convert_maybeunint_to_initialized<T: Copy>(maybe_uninit: Box<[MaybeUninit<T>]>) -> Box<[T]> {
-//     let len = maybe_uninit.len();
-//     let raw_ptr = Box::into_raw(maybe_uninit).cast::<T>();
-
-//     // now turn it into [T] without initializing the values. This is unsafe because the resulting slice might contain anything
-//     let result = unsafe { Box::from_raw(std::slice::from_raw_parts_mut(raw_ptr, len)) };
-//     result
-// }
