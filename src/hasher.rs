@@ -14,11 +14,9 @@ const BUFFER_SIZE: usize = 4096 * 8;
 fn hash_file<D: Digest>(filename: &str) -> anyhow::Result<Output<D>> {
     let filesize = usize::try_from(file_size(filename)?).ok();
 
-    if let Some(size) = filesize {
-        if size <= BUFFER_SIZE {
-            // this file is smaller than the buffer size, so we can hash it all at once
-            return hash_file_whole::<D>(filename);
-        }
+    if filesize.map_or(false, |size| size <= BUFFER_SIZE) {
+        // this file is smaller than the buffer size, so we can hash it all at once
+        return hash_file_whole::<D>(filename);
     }
 
     let file = File::open(filename)?;
