@@ -107,7 +107,6 @@ fn file_size(path: &str) -> anyhow::Result<u64> {
 }
 
 /// Build a heap buffer of a given size, filled with default values
-#[allow(dead_code)]
 fn build_heap_buffer<T: Default + Copy>(len: usize) -> Box<[T]> {
     let vec = vec![T::default(); len];
     vec.into_boxed_slice()
