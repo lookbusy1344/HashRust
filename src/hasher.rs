@@ -1,9 +1,9 @@
 use crate::classes::BasicHash;
 use byteorder::{BigEndian, ByteOrder};
+use data_encoding::{BASE32, BASE64};
 use digest::{Digest, Output};
 use std::fs::File;
 use std::io::{BufReader, Read};
-//use std::mem::MaybeUninit;
 use std::path::Path;
 
 const BUFFER_SIZE: usize = 4096 * 8;
@@ -65,30 +65,17 @@ pub fn hash_file_u32<D: Digest>(filename: &str) -> anyhow::Result<BasicHash> {
     Ok(BasicHash(format!("{number:010}")))
 }
 
-// / crc32fast doesnt seem to implement Digest, so we have to have a custom function for it
-// pub fn hash_file_crc32(filename: &str) -> anyhow::Result<BasicHash> {
-//     if !file_exists(filename) {
-//         return Err(anyhow::anyhow!("File not found: {}", filename));
-//     }
-//
-//     let file = File::open(filename)?;
-//     let mut reader = BufReader::new(file);
-//     let mut buffer = [0u8; BUFFER_SIZE];
-//
-//     let mut hasher = crc32fast::Hasher::new();
-//     loop {
-//         let n = reader.read(&mut buffer)?;
-//         if n == 0 {
-//             break;
-//         }
-//         hasher.update(&buffer[..n]);
-//     }
-//
-//     // crc32 is just as u32, so we have to convert it to a string
-//     let hashnum = hasher.finalize();
-//     let result = format!("{:010}", hashnum);
-//     Ok(BasicHash(result))
-// }
+#[inline]
+pub fn hash_file_base64<D: Digest>(filename: &str) -> anyhow::Result<BasicHash> {
+    let h = hash_file::<D>(filename)?;
+    Ok(BasicHash(BASE64.encode(&h)))
+}
+
+#[inline]
+pub fn hash_file_base32<D: Digest>(filename: &str) -> anyhow::Result<BasicHash> {
+    let h = hash_file::<D>(filename)?;
+    Ok(BasicHash(BASE32.encode(&h)))
+}
 
 /// check if file exists
 pub fn file_exists(path: impl AsRef<Path>) -> bool {
