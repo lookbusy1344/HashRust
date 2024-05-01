@@ -39,7 +39,7 @@ pub enum HashAlgorithm {
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, EnumString)]
 #[strum(ascii_case_insensitive)]
-pub enum ValueEncoding {
+pub enum OutputEncoding {
     Hex,
     Base64,
     Base32,

@@ -1,4 +1,4 @@
-use crate::classes::{BasicHash, ValueEncoding};
+use crate::classes::{BasicHash, OutputEncoding};
 use byteorder::{BigEndian, ByteOrder};
 use data_encoding::{BASE32, BASE64};
 use digest::{Digest, Output};
@@ -55,19 +55,20 @@ fn hash_file_whole<D: Digest>(filename: &str) -> anyhow::Result<Output<D>> {
 #[inline]
 pub fn hash_file_encoded<D: Digest>(
     filename: &str,
-    encoding: ValueEncoding,
+    output_encoding: OutputEncoding,
 ) -> anyhow::Result<BasicHash> {
     let h = hash_file::<D>(filename)?;
 
-    let encoded = match encoding {
-        ValueEncoding::Hex => hex::encode(h),
-        ValueEncoding::Base64 => BASE64.encode(&h),
-        ValueEncoding::Base32 => BASE32.encode(&h),
+    let encoded = match output_encoding {
+        OutputEncoding::Hex => hex::encode(h),
+        OutputEncoding::Base64 => BASE64.encode(&h),
+        OutputEncoding::Base32 => BASE32.encode(&h),
     };
 
     Ok(BasicHash(encoded))
 }
 
+/// Hash a file using CRC32, and return the result as a `BasicHash` u32
 #[inline]
 pub fn hash_file_u32<D: Digest>(filename: &str) -> anyhow::Result<BasicHash> {
     let h = hash_file::<D>(filename)?;
