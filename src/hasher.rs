@@ -63,17 +63,13 @@ pub fn hash_file_encoded<D: Digest>(
         OutputEncoding::Hex => hex::encode(h),
         OutputEncoding::Base64 => BASE64.encode(&h),
         OutputEncoding::Base32 => BASE32.encode(&h),
+        OutputEncoding::U32 => {
+            let number = BigEndian::read_u32(&h);
+            format!("{number:010}")
+        }
     };
 
     Ok(BasicHash(encoded))
-}
-
-/// Hash a file using CRC32, and return the result as a `BasicHash` u32
-#[inline]
-pub fn hash_file_u32<D: Digest>(filename: &str) -> anyhow::Result<BasicHash> {
-    let h = hash_file::<D>(filename)?;
-    let number = BigEndian::read_u32(&h);
-    Ok(BasicHash(format!("{number:010}")))
 }
 
 /// check if file exists

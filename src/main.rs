@@ -14,7 +14,7 @@ use crate::classes::{
 use blake2::{Blake2b512, Blake2s256};
 use classes::OutputEncoding;
 use glob::GlobResult;
-use hasher::{file_exists, hash_file_encoded, hash_file_u32};
+use hasher::{file_exists, hash_file_encoded};
 use md5::Md5;
 use rayon::prelude::*;
 use sha1::Sha1;
@@ -238,7 +238,7 @@ fn file_hashes_mt(config: &ConfigSettings, paths: &[String]) {
 fn call_hasher(algo: HashAlgorithm, path: &str) -> anyhow::Result<BasicHash> {
     match algo {
         // special case, u32 encoded
-        HashAlgorithm::CRC32 => hash_file_u32::<crc32::Crc32>(path),
+        HashAlgorithm::CRC32 => hash_file_encoded::<crc32::Crc32>(path, OutputEncoding::U32),
         // old algorithms
         HashAlgorithm::MD5 => hash_file_encoded::<Md5>(path, OutputEncoding::Hex),
         HashAlgorithm::SHA1 => hash_file_encoded::<Sha1>(path, OutputEncoding::Hex),
