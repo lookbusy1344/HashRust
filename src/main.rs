@@ -12,8 +12,9 @@ use crate::classes::{
 };
 //use crate::hasher::hash_file_crc32;
 use blake2::{Blake2b512, Blake2s256};
+use classes::ValueEncoding;
 use glob::GlobResult;
-use hasher::{file_exists, hash_file_hex, hash_file_u32};
+use hasher::{file_exists, hash_file_encoded, hash_file_u32};
 use md5::Md5;
 use rayon::prelude::*;
 use sha1::Sha1;
@@ -236,24 +237,25 @@ fn file_hashes_mt(config: &ConfigSettings, paths: &[String]) {
 /// calculate the hash of a file using given algorithm
 fn call_hasher(algo: HashAlgorithm, path: &str) -> anyhow::Result<BasicHash> {
     match algo {
-        // old algorithms
+        // special case, u32 encoded
         HashAlgorithm::CRC32 => hash_file_u32::<crc32::Crc32>(path),
-        HashAlgorithm::MD5 => hash_file_hex::<Md5>(path),
-        HashAlgorithm::SHA1 => hash_file_hex::<Sha1>(path),
+        // old algorithms
+        HashAlgorithm::MD5 => hash_file_encoded::<Md5>(path, ValueEncoding::Hex),
+        HashAlgorithm::SHA1 => hash_file_encoded::<Sha1>(path, ValueEncoding::Hex),
         // SHA2
-        HashAlgorithm::SHA2_224 => hash_file_hex::<Sha224>(path),
-        HashAlgorithm::SHA2_256 => hash_file_hex::<Sha256>(path),
-        HashAlgorithm::SHA2_384 => hash_file_hex::<Sha384>(path),
-        HashAlgorithm::SHA2_512 => hash_file_hex::<Sha512>(path),
+        HashAlgorithm::SHA2_224 => hash_file_encoded::<Sha224>(path, ValueEncoding::Hex),
+        HashAlgorithm::SHA2_256 => hash_file_encoded::<Sha256>(path, ValueEncoding::Hex),
+        HashAlgorithm::SHA2_384 => hash_file_encoded::<Sha384>(path, ValueEncoding::Hex),
+        HashAlgorithm::SHA2_512 => hash_file_encoded::<Sha512>(path, ValueEncoding::Hex),
         // SHA3
-        HashAlgorithm::SHA3_256 => hash_file_hex::<Sha3_256>(path),
-        HashAlgorithm::SHA3_384 => hash_file_hex::<Sha3_384>(path),
-        HashAlgorithm::SHA3_512 => hash_file_hex::<Sha3_512>(path),
+        HashAlgorithm::SHA3_256 => hash_file_encoded::<Sha3_256>(path, ValueEncoding::Hex),
+        HashAlgorithm::SHA3_384 => hash_file_encoded::<Sha3_384>(path, ValueEncoding::Hex),
+        HashAlgorithm::SHA3_512 => hash_file_encoded::<Sha3_512>(path, ValueEncoding::Hex),
         // WHIRLPOOL
-        HashAlgorithm::Whirlpool => hash_file_hex::<Whirlpool>(path),
+        HashAlgorithm::Whirlpool => hash_file_encoded::<Whirlpool>(path, ValueEncoding::Hex),
         // BLAKE2
-        HashAlgorithm::Blake2S256 => hash_file_hex::<Blake2s256>(path),
-        HashAlgorithm::Blake2B512 => hash_file_hex::<Blake2b512>(path),
+        HashAlgorithm::Blake2S256 => hash_file_encoded::<Blake2s256>(path, ValueEncoding::Hex),
+        HashAlgorithm::Blake2B512 => hash_file_encoded::<Blake2b512>(path, ValueEncoding::Hex),
     }
 }
 

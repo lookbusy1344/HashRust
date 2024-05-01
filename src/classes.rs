@@ -37,6 +37,14 @@ pub enum HashAlgorithm {
     Blake2S256,
 }
 
+#[derive(Debug, Copy, Clone, PartialEq, Eq, EnumString)]
+#[strum(ascii_case_insensitive)]
+pub enum ValueEncoding {
+    Hex,
+    Base64,
+    Base32,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 /// Basic hash string. This is a wrapper around a String
 pub struct BasicHash(pub String);

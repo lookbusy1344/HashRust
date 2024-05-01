@@ -1,4 +1,4 @@
-use crate::classes::BasicHash;
+use crate::classes::{BasicHash, ValueEncoding};
 use byteorder::{BigEndian, ByteOrder};
 use data_encoding::{BASE32, BASE64};
 use digest::{Digest, Output};
@@ -53,9 +53,19 @@ fn hash_file_whole<D: Digest>(filename: &str) -> anyhow::Result<Output<D>> {
 }
 
 #[inline]
-pub fn hash_file_hex<D: Digest>(filename: &str) -> anyhow::Result<BasicHash> {
+pub fn hash_file_encoded<D: Digest>(
+    filename: &str,
+    encoding: ValueEncoding,
+) -> anyhow::Result<BasicHash> {
     let h = hash_file::<D>(filename)?;
-    Ok(BasicHash(hex::encode(h)))
+
+    let encoded = match encoding {
+        ValueEncoding::Hex => hex::encode(h),
+        ValueEncoding::Base64 => BASE64.encode(&h),
+        ValueEncoding::Base32 => BASE32.encode(&h),
+    };
+
+    Ok(BasicHash(encoded))
 }
 
 #[inline]
@@ -63,18 +73,6 @@ pub fn hash_file_u32<D: Digest>(filename: &str) -> anyhow::Result<BasicHash> {
     let h = hash_file::<D>(filename)?;
     let number = BigEndian::read_u32(&h);
     Ok(BasicHash(format!("{number:010}")))
-}
-
-#[inline]
-pub fn hash_file_base64<D: Digest>(filename: &str) -> anyhow::Result<BasicHash> {
-    let h = hash_file::<D>(filename)?;
-    Ok(BasicHash(BASE64.encode(&h)))
-}
-
-#[inline]
-pub fn hash_file_base32<D: Digest>(filename: &str) -> anyhow::Result<BasicHash> {
-    let h = hash_file::<D>(filename)?;
-    Ok(BasicHash(BASE32.encode(&h)))
 }
 
 /// check if file exists
