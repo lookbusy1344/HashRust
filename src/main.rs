@@ -64,12 +64,23 @@ fn worker_func() -> anyhow::Result<()> {
         ));
     }
 
+    // get output encoding as string and parse it
+    let encodingstr: Option<String> = pargs.opt_value_from_str(["-e", "--encoding"])?;
+    let encoding = parse_hash_encoding(&encodingstr);
+
+    if encoding.is_err() {
+        return Err(anyhow::anyhow!(
+            "Encoding can be: Hex, Base64, Base32. Default is Hex",
+        ));
+    }
+
     let config = ConfigSettings::new(
         pargs.contains(["-d", "--debug"]),
         pargs.contains(["-x", "--exclude-filenames"]),
         pargs.contains(["-s", "--single-thread"]),
         pargs.contains(["-c", "--case-sensitive"]),
         algo.unwrap(),
+        encoding.unwrap(),
         pargs.opt_value_from_str(["-l", "--limit"])?,
     );
 
@@ -193,7 +204,7 @@ fn file_hashes_st(config: &ConfigSettings, paths: &[String]) {
     }
 
     for pathstr in paths {
-        let filehash = call_hasher(config.algorithm, pathstr);
+        let filehash = call_hasher(config.algorithm, config.encoding, pathstr);
 
         match filehash {
             Ok(filehash) => {
@@ -217,7 +228,7 @@ fn file_hashes_mt(config: &ConfigSettings, paths: &[String]) {
 
     // process the paths in parallel
     paths.par_iter().for_each(|pathstr| {
-        let filehash = call_hasher(config.algorithm, pathstr);
+        let filehash = call_hasher(config.algorithm, config.encoding, pathstr);
 
         match filehash {
             Ok(hash) => {
@@ -235,31 +246,42 @@ fn file_hashes_mt(config: &ConfigSettings, paths: &[String]) {
 }
 
 /// calculate the hash of a file using given algorithm
-fn call_hasher(algo: HashAlgorithm, path: &str) -> anyhow::Result<BasicHash> {
+fn call_hasher(
+    algo: HashAlgorithm,
+    encoding: OutputEncoding,
+    path: &str,
+) -> anyhow::Result<BasicHash> {
+    // panic if algo is CRC32 and output is not U32
+    assert!(
+        (algo == HashAlgorithm::CRC32 && encoding == OutputEncoding::U32)
+            || (algo != HashAlgorithm::CRC32 && encoding != OutputEncoding::U32),
+        "CRC32 can only be output as U32"
+    );
+
     match algo {
         // special case, u32 encoded
         HashAlgorithm::CRC32 => hash_file_encoded::<crc32::Crc32>(path, OutputEncoding::U32),
         // old algorithms
-        HashAlgorithm::MD5 => hash_file_encoded::<Md5>(path, OutputEncoding::Hex),
-        HashAlgorithm::SHA1 => hash_file_encoded::<Sha1>(path, OutputEncoding::Hex),
+        HashAlgorithm::MD5 => hash_file_encoded::<Md5>(path, encoding),
+        HashAlgorithm::SHA1 => hash_file_encoded::<Sha1>(path, encoding),
         // SHA2
-        HashAlgorithm::SHA2_224 => hash_file_encoded::<Sha224>(path, OutputEncoding::Hex),
-        HashAlgorithm::SHA2_256 => hash_file_encoded::<Sha256>(path, OutputEncoding::Hex),
-        HashAlgorithm::SHA2_384 => hash_file_encoded::<Sha384>(path, OutputEncoding::Hex),
-        HashAlgorithm::SHA2_512 => hash_file_encoded::<Sha512>(path, OutputEncoding::Hex),
+        HashAlgorithm::SHA2_224 => hash_file_encoded::<Sha224>(path, encoding),
+        HashAlgorithm::SHA2_256 => hash_file_encoded::<Sha256>(path, encoding),
+        HashAlgorithm::SHA2_384 => hash_file_encoded::<Sha384>(path, encoding),
+        HashAlgorithm::SHA2_512 => hash_file_encoded::<Sha512>(path, encoding),
         // SHA3
-        HashAlgorithm::SHA3_256 => hash_file_encoded::<Sha3_256>(path, OutputEncoding::Hex),
-        HashAlgorithm::SHA3_384 => hash_file_encoded::<Sha3_384>(path, OutputEncoding::Hex),
-        HashAlgorithm::SHA3_512 => hash_file_encoded::<Sha3_512>(path, OutputEncoding::Hex),
+        HashAlgorithm::SHA3_256 => hash_file_encoded::<Sha3_256>(path, encoding),
+        HashAlgorithm::SHA3_384 => hash_file_encoded::<Sha3_384>(path, encoding),
+        HashAlgorithm::SHA3_512 => hash_file_encoded::<Sha3_512>(path, encoding),
         // WHIRLPOOL
-        HashAlgorithm::Whirlpool => hash_file_encoded::<Whirlpool>(path, OutputEncoding::Hex),
+        HashAlgorithm::Whirlpool => hash_file_encoded::<Whirlpool>(path, encoding),
         // BLAKE2
-        HashAlgorithm::Blake2S256 => hash_file_encoded::<Blake2s256>(path, OutputEncoding::Hex),
-        HashAlgorithm::Blake2B512 => hash_file_encoded::<Blake2b512>(path, OutputEncoding::Hex),
+        HashAlgorithm::Blake2S256 => hash_file_encoded::<Blake2s256>(path, encoding),
+        HashAlgorithm::Blake2B512 => hash_file_encoded::<Blake2b512>(path, encoding),
     }
 }
 
-/// convert hash algorithm string into an integer
+/// convert hash algorithm string into an enum
 fn parse_hash_algorithm(algorithm: &Option<String>) -> Result<HashAlgorithm, strum::ParseError> {
     if algorithm.is_none() || algorithm.as_ref().unwrap().is_empty() {
         // no algorithm specified, use the default
@@ -267,6 +289,16 @@ fn parse_hash_algorithm(algorithm: &Option<String>) -> Result<HashAlgorithm, str
     }
 
     HashAlgorithm::from_str(algorithm.as_ref().unwrap())
+}
+
+/// convert output encoding string into an enum
+fn parse_hash_encoding(encoding: &Option<String>) -> Result<OutputEncoding, strum::ParseError> {
+    if encoding.is_none() || encoding.as_ref().unwrap().is_empty() {
+        // no algorithm specified, use the default
+        return Ok(OutputEncoding::Hex);
+    }
+
+    OutputEncoding::from_str(encoding.as_ref().unwrap())
 }
 
 /// Show help message

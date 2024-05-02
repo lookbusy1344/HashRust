@@ -60,6 +60,7 @@ pub struct ConfigSettings {
     pub singlethread: bool,
     pub casesensitive: bool,
     pub algorithm: HashAlgorithm,
+    pub encoding: OutputEncoding,
     pub limitnum: Option<usize>,
 }
 
@@ -72,6 +73,7 @@ impl ConfigSettings {
         singlethread: bool,
         casesensitive: bool,
         algorithm: HashAlgorithm,
+        encoding: OutputEncoding,
         limitnum: Option<usize>,
     ) -> Self {
         Self {
@@ -80,6 +82,7 @@ impl ConfigSettings {
             singlethread,
             casesensitive,
             algorithm,
+            encoding,
             limitnum,
         }
     }
@@ -96,6 +99,7 @@ FLAGS:
     -s, --single-thread          Single-threaded (not multi-threaded)
 OPTIONS:
     -a, --algorithm [algorithm]  Hash algorithm to use
+    -e, --encoding [encoding]    Output encoding (Hex, Base64, Base32. Default is Hex)
     -l, --limit [num]            Limit number of files processed
     
 Algorithm can be:

@@ -52,18 +52,22 @@ fn hash_file_whole<D: Digest>(filename: &str) -> anyhow::Result<Output<D>> {
     Ok(hasharray)
 }
 
+/// Hash a file using the given hasher as a Digest implementation, and encode the output
 #[inline]
 pub fn hash_file_encoded<D: Digest>(
     filename: &str,
-    output_encoding: OutputEncoding,
+    encoding: OutputEncoding,
 ) -> anyhow::Result<BasicHash> {
     let h = hash_file::<D>(filename)?;
 
-    let encoded = match output_encoding {
+    let encoded = match encoding {
         OutputEncoding::Hex => hex::encode(h),
         OutputEncoding::Base64 => BASE64.encode(&h),
         OutputEncoding::Base32 => BASE32.encode(&h),
         OutputEncoding::U32 => {
+            // check if h size is 4 bytes
+            assert!(h.len() == 4, "Hash size is not 4 bytes, but u32 requested");
+
             let number = BigEndian::read_u32(&h);
             format!("{number:010}")
         }
