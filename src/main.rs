@@ -74,17 +74,22 @@ fn worker_func() -> anyhow::Result<()> {
         ));
     }
 
+    // unwrap, and properly assign the default encoding
     let algo = algo.unwrap();
-    let mut encoding = encoding.unwrap();
+    let encoding = {
+        let mut e = encoding.unwrap();
 
-    // if encoding is unspecified, set it to default. u32 for crc32, hex for everything else
-    if encoding == OutputEncoding::Unspecified {
-        encoding = if algo == HashAlgorithm::CRC32 {
-            OutputEncoding::U32
-        } else {
-            OutputEncoding::Hex
-        };
-    }
+        if e == OutputEncoding::Unspecified {
+            e = if algo == HashAlgorithm::CRC32 {
+                OutputEncoding::U32 // default for CRC32
+            } else {
+                OutputEncoding::Hex // default for everything else
+            };
+        }
+
+        // return the encoding, to be assigned to the variable
+        e
+    };
 
     // make sure CRC32 is only output as U32
     if algo == HashAlgorithm::CRC32 && encoding != OutputEncoding::U32 {
