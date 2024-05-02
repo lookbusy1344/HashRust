@@ -41,9 +41,12 @@ Or pipe in a list of files:
 
 ```
     -a, --algorithm [algorithm]  Hash algorithm to use
+    -e, --encoding [encoding]    Encoding to use (hex, base64, base32)
     -l, --limit [num]            Limit number of files processed (eg only process the first one)
 ```
-    
+
+CRC32 can only be output as 32-bit integer, the `-e` option cannot be used with it.
+
 ## Algorithms supported
 
 ```
