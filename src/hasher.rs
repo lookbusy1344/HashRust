@@ -61,7 +61,7 @@ pub fn hash_file_encoded<D: Digest>(
     let h = hash_file::<D>(filename)?;
 
     let encoded = match encoding {
-        OutputEncoding::Hex => hex::encode(h),
+        OutputEncoding::Hex | OutputEncoding::Unspecified => hex::encode(h),
         OutputEncoding::Base64 => BASE64.encode(&h),
         OutputEncoding::Base32 => BASE32.encode(&h),
         OutputEncoding::U32 => {
@@ -70,9 +70,6 @@ pub fn hash_file_encoded<D: Digest>(
 
             let number = BigEndian::read_u32(&h);
             format!("{number:010}")
-        }
-        OutputEncoding::Unspecified => {
-            return Err(anyhow::anyhow!("Unknown encoding"));
         }
     };
 
