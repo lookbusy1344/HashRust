@@ -74,13 +74,37 @@ fn worker_func() -> anyhow::Result<()> {
         ));
     }
 
+    let algo = algo.unwrap();
+    let mut encoding = encoding.unwrap();
+
+    // if encoding is unspecified, set it to default. u32 for crc32, hex for everything else
+    if encoding == OutputEncoding::Unspecified {
+        encoding = if algo == HashAlgorithm::CRC32 {
+            OutputEncoding::U32
+        } else {
+            OutputEncoding::Hex
+        };
+    }
+
+    // make sure CRC32 is only output as U32
+    if algo == HashAlgorithm::CRC32 && encoding != OutputEncoding::U32 {
+        return Err(anyhow::anyhow!("CRC32 can only be output as U32",));
+    }
+
+    // make sure other algorithms are not output as U32
+    if algo != HashAlgorithm::CRC32 && encoding == OutputEncoding::U32 {
+        return Err(anyhow::anyhow!(
+            "This algorithm cannot be output as U32, please choose another encoding",
+        ));
+    }
+
     let config = ConfigSettings::new(
         pargs.contains(["-d", "--debug"]),
         pargs.contains(["-x", "--exclude-filenames"]),
         pargs.contains(["-s", "--single-thread"]),
         pargs.contains(["-c", "--case-sensitive"]),
-        algo.unwrap(),
-        encoding.unwrap(),
+        algo,
+        encoding,
         pargs.opt_value_from_str(["-l", "--limit"])?,
     );
 
@@ -295,7 +319,7 @@ fn parse_hash_algorithm(algorithm: &Option<String>) -> Result<HashAlgorithm, str
 fn parse_hash_encoding(encoding: &Option<String>) -> Result<OutputEncoding, strum::ParseError> {
     if encoding.is_none() || encoding.as_ref().unwrap().is_empty() {
         // no algorithm specified, use the default
-        return Ok(OutputEncoding::Hex);
+        return Ok(OutputEncoding::Unspecified);
     }
 
     OutputEncoding::from_str(encoding.as_ref().unwrap())

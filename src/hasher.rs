@@ -71,6 +71,9 @@ pub fn hash_file_encoded<D: Digest>(
             let number = BigEndian::read_u32(&h);
             format!("{number:010}")
         }
+        OutputEncoding::Unspecified => {
+            return Err(anyhow::anyhow!("Unknown encoding"));
+        }
     };
 
     Ok(BasicHash(encoded))

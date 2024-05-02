@@ -44,6 +44,7 @@ pub enum OutputEncoding {
     Base64,
     Base32,
     U32,
+    Unspecified,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
