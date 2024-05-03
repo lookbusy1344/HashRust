@@ -57,7 +57,7 @@ fn worker_func() -> anyhow::Result<()> {
     }
 
     // parse the command line arguments
-    let (config, suppliedpath) = process_command_line(&mut pargs)?;
+    let (config, suppliedpath) = process_command_line(pargs)?;
 
     if config.debugmode {
         show_help(false);
@@ -108,8 +108,8 @@ fn worker_func() -> anyhow::Result<()> {
     Ok(())
 }
 
-/// process the command line arguments and return a ConfigSettings struct
-fn process_command_line(pargs: &mut Arguments) -> anyhow::Result<(ConfigSettings, Option<String>)> {
+/// process the command line arguments and return a `ConfigSettings` struct
+fn process_command_line(mut pargs: Arguments) -> anyhow::Result<(ConfigSettings, Option<String>)> {
     // get algorithm as string and parse it
     let algostr: Option<String> = pargs.opt_value_from_str(["-a", "--algorithm"])?;
     let algo = parse_hash_algorithm(&algostr);
@@ -130,8 +130,9 @@ fn process_command_line(pargs: &mut Arguments) -> anyhow::Result<(ConfigSettings
         ));
     }
 
+    let algo = algo.unwrap(); // unwrap the algorithm
+
     // unwrap, and properly assign the default encoding
-    let algo = algo.unwrap();
     let encoding = {
         let mut e = encoding.unwrap();
 
@@ -159,6 +160,7 @@ fn process_command_line(pargs: &mut Arguments) -> anyhow::Result<(ConfigSettings
         ));
     }
 
+    // build the config struct
     let config = ConfigSettings::new(
         pargs.contains(["-d", "--debug"]),
         pargs.contains(["-x", "--exclude-filenames"]),
