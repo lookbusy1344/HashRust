@@ -64,13 +64,8 @@ fn worker_func() -> anyhow::Result<()> {
     }
 
     // get the required files, either using supplied path or from reading stdin
-    let mut paths = get_required_filenames(&config, &suppliedpath)?;
+    let paths = get_required_filenames(&config, &suppliedpath)?;
 
-    if config.limitnum.is_some() && paths.len() > config.limitnum.unwrap() {
-        paths.truncate(config.limitnum.unwrap());
-    }
-
-    let paths = paths;
     if paths.is_empty() {
         if config.debugmode {
             eprintln!("No files found");
@@ -98,13 +93,20 @@ fn get_required_filenames(
     config: &ConfigSettings,
     suppliedpath: &Option<String>,
 ) -> anyhow::Result<Vec<String>> {
-    if let Some(p) = suppliedpath {
+    let mut paths = if let Some(p) = suppliedpath {
         // path specified, use glob
-        Ok(get_paths_matching_glob(config, p.as_str())?)
+        get_paths_matching_glob(config, p.as_str())?
     } else {
         // no path specified, read from stdin
-        Ok(get_paths_from_stdin(config)?)
+        get_paths_from_stdin(config)?
+    };
+
+    // limit the number of paths if required
+    if config.limitnum.is_some() && paths.len() > config.limitnum.unwrap() {
+        paths.truncate(config.limitnum.unwrap());
     }
+
+    Ok(paths)
 }
 
 fn show_initial_info(config: &ConfigSettings, suppliedpath: &Option<String>) {
