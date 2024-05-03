@@ -16,6 +16,7 @@ use classes::OutputEncoding;
 use glob::GlobResult;
 use hasher::{file_exists, hash_file_encoded};
 use md5::Md5;
+use pico_args::Arguments;
 use rayon::prelude::*;
 use sha1::Sha1;
 use sha2::{Sha224, Sha256, Sha384, Sha512};
@@ -49,11 +50,66 @@ fn worker_func() -> anyhow::Result<()> {
     //println!("DIAGNOSTIC PARAMETERS SET: {paramsvec:?}");
     //let mut pargs = pico_args::Arguments::from_vec(paramsvec);
 
+    // special handling of help
     if pargs.contains(["-h", "--help"]) {
         show_help(true);
         return Ok(());
     }
 
+    // parse the command line arguments
+    let (config, suppliedpath) = process_command_line(&mut pargs)?;
+
+    if config.debugmode {
+        show_help(false);
+        eprintln!();
+        eprintln!("Config: {config:?}");
+        if suppliedpath.is_none() {
+            eprintln!("No path specified, reading from stdin");
+        } else {
+            eprintln!("Path: {}", suppliedpath.as_ref().unwrap());
+        }
+    }
+
+    // get the required files, either using supplied path or from reading stdin
+    let mut paths = {
+        if let Some(p) = suppliedpath {
+            // path specified, use glob
+            get_paths_matching_glob(&config, p.as_str())?
+        } else {
+            // no path specified, read from stdin
+            get_paths_from_stdin(&config)?
+        }
+    };
+
+    if config.limitnum.is_some() && paths.len() > config.limitnum.unwrap() {
+        paths.truncate(config.limitnum.unwrap());
+    }
+
+    let paths = paths;
+    if paths.is_empty() {
+        if config.debugmode {
+            eprintln!("No files found");
+        }
+        return Ok(());
+    }
+
+    if config.debugmode {
+        eprintln!("Files to hash: {paths:?}");
+    }
+
+    if config.singlethread || paths.len() == 1 {
+        // asked for single thread, or only one path given
+        file_hashes_st(&config, &paths);
+    } else {
+        // multi-threaded
+        file_hashes_mt(&config, &paths);
+    }
+
+    Ok(())
+}
+
+/// process the command line arguments and return a ConfigSettings struct
+fn process_command_line(pargs: &mut Arguments) -> anyhow::Result<(ConfigSettings, Option<String>)> {
     // get algorithm as string and parse it
     let algostr: Option<String> = pargs.opt_value_from_str(["-a", "--algorithm"])?;
     let algo = parse_hash_algorithm(&algostr);
@@ -129,53 +185,7 @@ fn worker_func() -> anyhow::Result<()> {
         }
     };
 
-    if config.debugmode {
-        show_help(false);
-        eprintln!();
-        eprintln!("Config: {config:?}");
-        if suppliedpath.is_none() {
-            eprintln!("No path specified, reading from stdin");
-        } else {
-            eprintln!("Path: {}", suppliedpath.as_ref().unwrap());
-        }
-    }
-
-    // get the required files, either using supplied path or from reading stdin
-    let mut paths = {
-        if let Some(p) = suppliedpath {
-            // path specified, use glob
-            get_paths_matching_glob(&config, p.as_str())?
-        } else {
-            // no path specified, read from stdin
-            get_paths_from_stdin(&config)?
-        }
-    };
-
-    if config.limitnum.is_some() && paths.len() > config.limitnum.unwrap() {
-        paths.truncate(config.limitnum.unwrap());
-    }
-
-    let paths = paths;
-    if paths.is_empty() {
-        if config.debugmode {
-            eprintln!("No files found");
-        }
-        return Ok(());
-    }
-
-    if config.debugmode {
-        eprintln!("Files to hash: {paths:?}");
-    }
-
-    if config.singlethread || paths.len() == 1 {
-        // asked for single thread, or only one path given
-        file_hashes_st(&config, &paths);
-    } else {
-        // multi-threaded
-        file_hashes_mt(&config, &paths);
-    }
-
-    Ok(())
+    Ok((config, suppliedpath))
 }
 
 /// read from standard input and return a vector of strings
