@@ -94,8 +94,7 @@ fn get_required_filenames(config: &ConfigSettings) -> anyhow::Result<Vec<String>
         // no path specified, read from stdin
         get_paths_from_stdin(config)?
     } else {
-        let sp = config.suppliedpath.as_ref().unwrap();
-        get_paths_matching_glob(config, sp)? // *** fix this, pattern is already in config
+        get_paths_matching_glob(config)?
     };
 
     // limit the number of paths if required
@@ -226,14 +225,20 @@ fn get_paths_from_stdin(config: &ConfigSettings) -> anyhow::Result<Vec<String>> 
 }
 
 /// function to take a glob and return a vector of path strings
-fn get_paths_matching_glob(config: &ConfigSettings, pattern: &str) -> anyhow::Result<Vec<String>> {
+fn get_paths_matching_glob(config: &ConfigSettings) -> anyhow::Result<Vec<String>> {
     let globsettings = glob::MatchOptions {
         case_sensitive: config.casesensitive,
         require_literal_separator: false,
         require_literal_leading_dot: false,
     };
 
-    let temppaths = glob::glob_with(pattern, globsettings)?;
+    // we've already checked config.suppliedpath is not None
+    //assert!(config.suppliedpath.is_some());
+
+    // have to clone to unwrap the string, because the struct is borrowed
+    let pattern = config.suppliedpath.clone().unwrap();
+
+    let temppaths = glob::glob_with(&pattern, globsettings)?;
 
     // filter out non-files
     let pathglobs: Vec<GlobResult> = temppaths
