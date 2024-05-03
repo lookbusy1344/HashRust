@@ -60,26 +60,11 @@ fn worker_func() -> anyhow::Result<()> {
     let (config, suppliedpath) = process_command_line(pargs)?;
 
     if config.debugmode {
-        show_help(false);
-        eprintln!();
-        eprintln!("Config: {config:?}");
-        if suppliedpath.is_none() {
-            eprintln!("No path specified, reading from stdin");
-        } else {
-            eprintln!("Path: {}", suppliedpath.as_ref().unwrap());
-        }
+        show_initial_info(&config, &suppliedpath);
     }
 
     // get the required files, either using supplied path or from reading stdin
-    let mut paths = {
-        if let Some(p) = suppliedpath {
-            // path specified, use glob
-            get_paths_matching_glob(&config, p.as_str())?
-        } else {
-            // no path specified, read from stdin
-            get_paths_from_stdin(&config)?
-        }
-    };
+    let mut paths = get_required_filenames(&config, &suppliedpath)?;
 
     if config.limitnum.is_some() && paths.len() > config.limitnum.unwrap() {
         paths.truncate(config.limitnum.unwrap());
@@ -106,6 +91,31 @@ fn worker_func() -> anyhow::Result<()> {
     }
 
     Ok(())
+}
+
+/// get the required files, either using supplied path or from reading stdin
+fn get_required_filenames(
+    config: &ConfigSettings,
+    suppliedpath: &Option<String>,
+) -> anyhow::Result<Vec<String>> {
+    if let Some(p) = suppliedpath {
+        // path specified, use glob
+        Ok(get_paths_matching_glob(config, p.as_str())?)
+    } else {
+        // no path specified, read from stdin
+        Ok(get_paths_from_stdin(config)?)
+    }
+}
+
+fn show_initial_info(config: &ConfigSettings, suppliedpath: &Option<String>) {
+    show_help(false);
+    eprintln!();
+    eprintln!("Config: {config:?}");
+    if suppliedpath.is_none() {
+        eprintln!("No path specified, reading from stdin");
+    } else {
+        eprintln!("Path: {}", suppliedpath.as_ref().unwrap());
+    }
 }
 
 /// process the command line arguments and return a `ConfigSettings` struct
