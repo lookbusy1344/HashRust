@@ -57,14 +57,14 @@ fn worker_func() -> anyhow::Result<()> {
     }
 
     // parse the command line arguments
-    let (config, suppliedpath) = process_command_line(pargs)?;
+    let config = process_command_line(pargs)?;
 
     if config.debugmode {
-        show_initial_info(&config, &suppliedpath);
+        show_initial_info(&config);
     }
 
     // get the required files, either using supplied path or from reading stdin
-    let paths = get_required_filenames(&config, &suppliedpath)?;
+    let paths = get_required_filenames(&config)?;
 
     if paths.is_empty() {
         if config.debugmode {
@@ -89,16 +89,13 @@ fn worker_func() -> anyhow::Result<()> {
 }
 
 /// get the required files, either using supplied path or from reading stdin
-fn get_required_filenames(
-    config: &ConfigSettings,
-    suppliedpath: &Option<String>,
-) -> anyhow::Result<Vec<String>> {
-    let mut paths = if let Some(p) = suppliedpath {
-        // path specified, use glob
-        get_paths_matching_glob(config, p.as_str())?
-    } else {
+fn get_required_filenames(config: &ConfigSettings) -> anyhow::Result<Vec<String>> {
+    let mut paths = if config.suppliedpath.is_none() {
         // no path specified, read from stdin
         get_paths_from_stdin(config)?
+    } else {
+        let sp = config.suppliedpath.as_ref().unwrap();
+        get_paths_matching_glob(config, sp)? // *** fix this, pattern is already in config
     };
 
     // limit the number of paths if required
@@ -109,19 +106,19 @@ fn get_required_filenames(
     Ok(paths)
 }
 
-fn show_initial_info(config: &ConfigSettings, suppliedpath: &Option<String>) {
+fn show_initial_info(config: &ConfigSettings) {
     show_help(false);
     eprintln!();
     eprintln!("Config: {config:?}");
-    if suppliedpath.is_none() {
+    if config.suppliedpath.is_none() {
         eprintln!("No path specified, reading from stdin");
     } else {
-        eprintln!("Path: {}", suppliedpath.as_ref().unwrap());
+        eprintln!("Path: {}", config.suppliedpath.as_ref().unwrap());
     }
 }
 
 /// process the command line arguments and return a `ConfigSettings` struct
-fn process_command_line(mut pargs: Arguments) -> anyhow::Result<(ConfigSettings, Option<String>)> {
+fn process_command_line(mut pargs: Arguments) -> anyhow::Result<ConfigSettings> {
     // get algorithm as string and parse it
     let algostr: Option<String> = pargs.opt_value_from_str(["-a", "--algorithm"])?;
     let algo = parse_hash_algorithm(&algostr);
@@ -173,7 +170,7 @@ fn process_command_line(mut pargs: Arguments) -> anyhow::Result<(ConfigSettings,
     }
 
     // build the config struct
-    let config = ConfigSettings::new(
+    let mut config = ConfigSettings::new(
         pargs.contains(["-d", "--debug"]),
         pargs.contains(["-x", "--exclude-filenames"]),
         pargs.contains(["-s", "--single-thread"]),
@@ -199,7 +196,10 @@ fn process_command_line(mut pargs: Arguments) -> anyhow::Result<(ConfigSettings,
         }
     };
 
-    Ok((config, suppliedpath))
+    // add the supplied path to config object
+    config.set_suppliedpath(suppliedpath);
+
+    Ok(config)
 }
 
 /// read from standard input and return a vector of strings

@@ -53,7 +53,7 @@ pub struct BasicHash(pub String);
 
 #[allow(clippy::struct_excessive_bools)]
 #[readonly::make]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug)]
 /// Configuration settings
 pub struct ConfigSettings {
     pub debugmode: bool,
@@ -63,6 +63,7 @@ pub struct ConfigSettings {
     pub algorithm: HashAlgorithm,
     pub encoding: OutputEncoding,
     pub limitnum: Option<usize>,
+    pub suppliedpath: Option<String>,
 }
 
 impl ConfigSettings {
@@ -85,7 +86,12 @@ impl ConfigSettings {
             algorithm,
             encoding,
             limitnum,
+            suppliedpath: None,
         }
+    }
+
+    pub fn set_suppliedpath(&mut self, path: Option<String>) {
+        self.suppliedpath = path;
     }
 }
 
