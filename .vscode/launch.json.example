@@ -4,27 +4,6 @@
         {
             "type": "lldb",
             "request": "launch",
-            "name": "Debug with lldb params",
-            "cargo": {
-                "args": [
-                    "build",
-                    "--bin=hash_rust",
-                    "--package=hash_rust"
-                ],
-                "filter": {
-                    "kind": "bin"
-                }
-            },
-            "args": [
-				"C:\\Users\\name\\Documents\\*.txt",
-				"-d"
-            ],
-            "cwd": "${workspaceFolder}",
-            "console": "externalTerminal"
-        },
-        {
-            "type": "lldb",
-            "request": "launch",
             "name": "Debug with lldb",
             "cargo": {
                 "args": [
@@ -36,19 +15,28 @@
                     "kind": "bin"
                 }
             },
-            "args": [],
-            "cwd": "${workspaceFolder}"
+            "args": [
+                "C:\\Users\\name\\Documents\\*.txt",
+                "--debug",
+                "--single-thread"
+            ],
+            "cwd": "${workspaceFolder}",
+            "console": "externalTerminal"
         },
         {
             "name": "Debug with cppvsdbg",
             "type": "cppvsdbg",
             "request": "launch",
             "program": "${workspaceRoot}/target/debug/hash_rust.exe",
-            "args": [],
+            "args": [
+                "C:\\Users\\name\\Documents\\*.txt",
+                "--debug",
+                "--single-thread"
+            ],
             "stopAtEntry": false,
             "cwd": "${workspaceRoot}",
             "environment": [],
-            "externalConsole": true
+            "console": "externalTerminal"
         },
         {
             "type": "lldb",
