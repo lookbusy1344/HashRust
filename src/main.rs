@@ -2,30 +2,33 @@
 // #![allow(dead_code)]
 // #![allow(unused_variables)]
 
-mod classes;
-mod crc32;
-mod hasher;
-mod unit_tests;
+use std::ffi::OsString;
+use std::io;
+use std::io::BufRead;
+use std::str::FromStr;
 
-use crate::classes::{
-    BasicHash, ConfigSettings, HashAlgorithm, DEFAULT_HASH, GIT_VERSION_SHORT, HELP, VERSION,
-};
 //use crate::hasher::hash_file_crc32;
 use blake2::{Blake2b512, Blake2s256};
-use classes::OutputEncoding;
 use glob::GlobResult;
-use hasher::{file_exists, hash_file_encoded};
 use md5::Md5;
 use pico_args::Arguments;
 use rayon::prelude::*;
 use sha1::Sha1;
 use sha2::{Sha224, Sha256, Sha384, Sha512};
 use sha3::{Sha3_256, Sha3_384, Sha3_512};
-use std::ffi::OsString;
-use std::io;
-use std::io::BufRead;
-use std::str::FromStr;
 use whirlpool::Whirlpool;
+
+use classes::OutputEncoding;
+use hasher::{file_exists, hash_file_encoded};
+
+use crate::classes::{
+    BasicHash, ConfigSettings, DEFAULT_HASH, GIT_VERSION_SHORT, HashAlgorithm, HELP, VERSION,
+};
+
+mod classes;
+mod crc32;
+mod hasher;
+mod unit_tests;
 
 /// Call the inner worker function, and show help if there is an error
 fn main() -> anyhow::Result<()> {
@@ -43,7 +46,7 @@ fn main() -> anyhow::Result<()> {
 
 /// main worker function for entire app
 fn worker_func() -> anyhow::Result<()> {
-    let mut pargs = pico_args::Arguments::from_env();
+    let mut pargs = Arguments::from_env();
 
     // diagnostic code to set the parameters
     //let paramsvec: Vec<std::ffi::OsString> = vec!["--rubbish".into()];
@@ -59,7 +62,7 @@ fn worker_func() -> anyhow::Result<()> {
     // parse the command line arguments
     let config = process_command_line(pargs)?;
 
-    if config.debugmode {
+    if config.debug_mode {
         show_initial_info(&config);
     }
 
@@ -67,21 +70,21 @@ fn worker_func() -> anyhow::Result<()> {
     let paths = get_required_filenames(&config)?;
 
     if paths.is_empty() {
-        if config.debugmode {
+        if config.debug_mode {
             eprintln!("No files found");
         }
         return Ok(());
     }
 
-    if config.debugmode {
+    if config.debug_mode {
         eprintln!("Files to hash: {paths:?}");
     }
 
-    if config.singlethread || paths.len() == 1 {
+    if config.single_thread || paths.len() == 1 {
         // asked for single thread, or only one path given
         file_hashes_st(&config, &paths);
     } else {
-        // multi-threaded
+        // multithreaded
         file_hashes_mt(&config, &paths);
     }
 
@@ -90,7 +93,7 @@ fn worker_func() -> anyhow::Result<()> {
 
 /// get the required files, either using supplied path or from reading stdin
 fn get_required_filenames(config: &ConfigSettings) -> anyhow::Result<Vec<String>> {
-    let mut paths = if config.suppliedpath.is_none() {
+    let mut paths = if config.supplied_path.is_none() {
         // no path specified, read from stdin
         get_paths_from_stdin(config)?
     } else {
@@ -98,8 +101,8 @@ fn get_required_filenames(config: &ConfigSettings) -> anyhow::Result<Vec<String>
     };
 
     // limit the number of paths if required
-    if config.limitnum.is_some() && paths.len() > config.limitnum.unwrap() {
-        paths.truncate(config.limitnum.unwrap());
+    if config.limit_num.is_some() && paths.len() > config.limit_num.unwrap() {
+        paths.truncate(config.limit_num.unwrap());
     }
 
     Ok(paths)
@@ -109,18 +112,18 @@ fn show_initial_info(config: &ConfigSettings) {
     show_help(false);
     eprintln!();
     eprintln!("Config: {config:?}");
-    if config.suppliedpath.is_none() {
+    if config.supplied_path.is_none() {
         eprintln!("No path specified, reading from stdin");
     } else {
-        eprintln!("Path: {}", config.suppliedpath.as_ref().unwrap());
+        eprintln!("Path: {}", config.supplied_path.as_ref().unwrap());
     }
 }
 
 /// process the command line arguments and return a `ConfigSettings` struct
 fn process_command_line(mut pargs: Arguments) -> anyhow::Result<ConfigSettings> {
     // get algorithm as string and parse it
-    let algostr: Option<String> = pargs.opt_value_from_str(["-a", "--algorithm"])?;
-    let algo = parse_hash_algorithm(&algostr);
+    let algo_str: Option<String> = pargs.opt_value_from_str(["-a", "--algorithm"])?;
+    let algo = parse_hash_algorithm(&algo_str);
 
     if algo.is_err() {
         return Err(anyhow::anyhow!(
@@ -129,8 +132,8 @@ fn process_command_line(mut pargs: Arguments) -> anyhow::Result<ConfigSettings> 
     }
 
     // get output encoding as string and parse it
-    let encodingstr: Option<String> = pargs.opt_value_from_str(["-e", "--encoding"])?;
-    let encoding = parse_hash_encoding(&encodingstr);
+    let encoding_str: Option<String> = pargs.opt_value_from_str(["-e", "--encoding"])?;
+    let encoding = parse_hash_encoding(&encoding_str);
 
     if encoding.is_err() {
         return Err(anyhow::anyhow!(
@@ -181,22 +184,22 @@ fn process_command_line(mut pargs: Arguments) -> anyhow::Result<ConfigSettings> 
 
     // Check for unused arguments, and error out if there are any beginning with a dash
     // anything else might legitimately be a path, so we'll check that later
-    let remainingargs = args_finished(pargs)?;
+    let remaining_args = args_finished(pargs)?;
 
     // get the supplied path, if any. Turn the vector into a single Option<String>
-    let suppliedpath = match remainingargs.len() {
+    let supplied_path = match remaining_args.len() {
         0 => None, // no path, we are expecting to read from stdin
-        1 => Some(remainingargs[0].to_string_lossy().to_string()), // one path given
+        1 => Some(remaining_args[0].to_string_lossy().to_string()), // one path given
         _ => {
             // more than one path given, error out
             return Err(anyhow::anyhow!(
-                "Only one path parameter can be given, but found {remainingargs:?}"
+                "Only one path parameter can be given, but found {remaining_args:?}"
             ));
         }
     };
 
     // add the supplied path to config object
-    config.set_suppliedpath(suppliedpath);
+    config.set_supplied_path(supplied_path);
 
     Ok(config)
 }
@@ -211,7 +214,7 @@ fn get_paths_from_stdin(config: &ConfigSettings) -> anyhow::Result<Vec<String>> 
             Ok(line) => {
                 if file_exists(&line) {
                     lines.push(line);
-                } else if config.debugmode {
+                } else if config.debug_mode {
                     eprintln!("Not a file: {line}");
                 }
             }
@@ -226,27 +229,27 @@ fn get_paths_from_stdin(config: &ConfigSettings) -> anyhow::Result<Vec<String>> 
 
 /// function to take a glob and return a vector of path strings
 fn get_paths_matching_glob(config: &ConfigSettings) -> anyhow::Result<Vec<String>> {
-    let globsettings = glob::MatchOptions {
-        case_sensitive: config.casesensitive,
+    let glob_settings = glob::MatchOptions {
+        case_sensitive: config.case_sensitive,
         require_literal_separator: false,
         require_literal_leading_dot: false,
     };
 
-    // we've already checked config.suppliedpath is not None
-    //assert!(config.suppliedpath.is_some());
+    // we've already checked config.supplied_path is not None
+    //assert!(config.supplied_path.is_some());
 
     // have to clone to unwrap the string, because the struct is borrowed
-    let pattern = config.suppliedpath.clone().unwrap();
+    let pattern = config.supplied_path.clone().unwrap();
 
-    let temppaths = glob::glob_with(&pattern, globsettings)?;
+    let temp_paths = glob::glob_with(&pattern, glob_settings)?;
 
     // filter out non-files
-    let pathglobs: Vec<GlobResult> = temppaths
+    let path_globs: Vec<GlobResult> = temp_paths
         .filter(|x| x.as_ref().unwrap().is_file())
         .collect();
 
     // convert to vector of strings
-    let paths: Vec<String> = pathglobs
+    let paths: Vec<String> = path_globs
         .into_iter()
         .map(|x| x.unwrap().to_string_lossy().to_string())
         .collect();
@@ -256,20 +259,20 @@ fn get_paths_matching_glob(config: &ConfigSettings) -> anyhow::Result<Vec<String
 
 /// output all file hashes matching a pattern, directly to stdout. Single-threaded
 fn file_hashes_st(config: &ConfigSettings, paths: &[String]) {
-    if config.debugmode {
+    if config.debug_mode {
         eprintln!("Single-threaded mode");
         eprintln!("Algorithm: {:?}", config.algorithm);
     }
 
     for pathstr in paths {
-        let filehash = call_hasher(config.algorithm, config.encoding, pathstr);
+        let file_hash = call_hasher(config.algorithm, config.encoding, pathstr);
 
-        match filehash {
-            Ok(filehash) => {
-                if config.excludefn {
-                    println!("{}", filehash.0);
+        match file_hash {
+            Ok(BasicHash(_0)) => {
+                if config.exclude_fn {
+                    println!("{}", _0);
                 } else {
-                    println!("{} {}", filehash.0, pathstr);
+                    println!("{} {}", _0, pathstr);
                 }
             }
             Err(e) => eprintln!("'{pathstr}' file err {e:?}"),
@@ -277,20 +280,20 @@ fn file_hashes_st(config: &ConfigSettings, paths: &[String]) {
     }
 }
 
-/// output all file hashes matching a pattern, directly to stdout. Multi-threaded version
+/// output all file hashes matching a pattern, directly to stdout. Multithreaded version
 fn file_hashes_mt(config: &ConfigSettings, paths: &[String]) {
-    if config.debugmode {
+    if config.debug_mode {
         eprintln!("Multi-threaded mode");
         eprintln!("Algorithm: {:?}", config.algorithm);
     }
 
     // process the paths in parallel
     paths.par_iter().for_each(|pathstr| {
-        let filehash = call_hasher(config.algorithm, config.encoding, pathstr);
+        let file_hash = call_hasher(config.algorithm, config.encoding, pathstr);
 
-        match filehash {
+        match file_hash {
             Ok(hash) => {
-                if config.excludefn {
+                if config.exclude_fn {
                     println!("{}", hash.0);
                 } else {
                     println!("{} {}", hash.0, pathstr);
@@ -373,7 +376,7 @@ fn show_help(longform: bool) {
 }
 
 /// Check for unused arguments, and error out if there are any
-fn args_finished(args: pico_args::Arguments) -> anyhow::Result<Vec<OsString>> {
+fn args_finished(args: Arguments) -> anyhow::Result<Vec<OsString>> {
     let unused = args.finish();
 
     // check any unused members do not start with a dash

@@ -56,42 +56,42 @@ pub struct BasicHash(pub String);
 #[derive(Debug)]
 /// Configuration settings
 pub struct ConfigSettings {
-    pub debugmode: bool,
-    pub excludefn: bool,
-    pub singlethread: bool,
-    pub casesensitive: bool,
+    pub debug_mode: bool,
+    pub exclude_fn: bool,
+    pub single_thread: bool,
+    pub case_sensitive: bool,
     pub algorithm: HashAlgorithm,
     pub encoding: OutputEncoding,
-    pub limitnum: Option<usize>,
-    pub suppliedpath: Option<String>,
+    pub limit_num: Option<usize>,
+    pub supplied_path: Option<String>,
 }
 
 impl ConfigSettings {
     #[allow(clippy::fn_params_excessive_bools)]
     /// Create a new `ConfigSettings` object
     pub fn new(
-        debugmode: bool,
-        excludefn: bool,
-        singlethread: bool,
-        casesensitive: bool,
+        debug_mode: bool,
+        exclude_fn: bool,
+        single_thread: bool,
+        case_sensitive: bool,
         algorithm: HashAlgorithm,
         encoding: OutputEncoding,
-        limitnum: Option<usize>,
+        limit_num: Option<usize>,
     ) -> Self {
         Self {
-            debugmode,
-            excludefn,
-            singlethread,
-            casesensitive,
+            debug_mode,
+            exclude_fn,
+            single_thread,
+            case_sensitive,
             algorithm,
             encoding,
-            limitnum,
-            suppliedpath: None,
+            limit_num,
+            supplied_path: None,
         }
     }
 
-    pub fn set_suppliedpath(&mut self, path: Option<String>) {
-        self.suppliedpath = path;
+    pub fn set_supplied_path(&mut self, path: Option<String>) {
+        self.supplied_path = path;
     }
 }
 

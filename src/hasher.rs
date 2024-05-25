@@ -1,10 +1,12 @@
-use crate::classes::{BasicHash, OutputEncoding};
-use byteorder::{BigEndian, ByteOrder};
-use data_encoding::{BASE32, BASE64};
-use digest::{Digest, Output};
 use std::fs::File;
 use std::io::{BufReader, Read};
 use std::path::Path;
+
+use byteorder::{BigEndian, ByteOrder};
+use data_encoding::{BASE32, BASE64};
+use digest::{Digest, Output};
+
+use crate::classes::{BasicHash, OutputEncoding};
 
 const BUFFER_SIZE: usize = 4096 * 8;
 
@@ -26,20 +28,20 @@ fn hash_file<D: Digest>(filename: &str) -> anyhow::Result<Output<D>> {
 
     let mut hasher = D::new();
     loop {
-        let bytesread = reader.read(&mut buffer)?;
-        if bytesread == 0 {
+        let bytes_read = reader.read(&mut buffer)?;
+        if bytes_read == 0 {
             break; // nothing more to read
         }
-        hasher.update(&buffer[..bytesread]);
-        if bytesread < BUFFER_SIZE {
+        hasher.update(&buffer[..bytes_read]);
+        if bytes_read < BUFFER_SIZE {
             break; // we've reached the end of the file
         }
     }
 
     // Output<T> = GenericArray<u8, <T as OutputSizeUser>::OutputSize>
     // just return this directly to avoid an extra allocation
-    let hasharray = hasher.finalize();
-    Ok(hasharray)
+    let hash_array = hasher.finalize();
+    Ok(hash_array)
 }
 
 /// Hash the entire file at once
@@ -48,8 +50,8 @@ fn hash_file_whole<D: Digest>(filename: &str) -> anyhow::Result<Output<D>> {
     let mut hasher = D::new();
     hasher.update(&data);
 
-    let hasharray = hasher.finalize();
-    Ok(hasharray)
+    let hash_array = hasher.finalize();
+    Ok(hash_array)
 }
 
 /// Hash a file using the given hasher as a Digest implementation, and encode the output
@@ -66,7 +68,7 @@ pub fn hash_file_encoded<D: Digest>(
         OutputEncoding::Base32 => BASE32.encode(&h),
         OutputEncoding::U32 => {
             // check if h size is 4 bytes
-            assert!(h.len() == 4, "Hash size is not 4 bytes, but u32 requested");
+            assert_eq!(h.len(), 4, "Hash size is not 4 bytes, but u32 requested");
 
             let number = BigEndian::read_u32(&h);
             format!("{number:010}")

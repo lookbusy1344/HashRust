@@ -1,12 +1,12 @@
-use crc32fast::Hasher;
-use digest::{FixedOutput, HashMarker, Output, OutputSizeUser, Reset, Update};
-use generic_array::typenum::U4;
 use std::io::Write;
 
+use crc32fast::Hasher;
+use digest::{FixedOutput, HashMarker, Output, OutputSizeUser, Reset, Update};
 pub use digest::Digest;
+use generic_array::typenum::U4;
 
 // Updated from https://github.com/ajungren/crc32_digest
-// The original is Rust 2018 and doesnt seem to support the new digest crate
+// The original is Rust 2018 and doesn't seem to support the new digest crate
 
 // Updated version:
 // https://github.com/lookbusy1344/crc32_digest
