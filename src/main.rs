@@ -127,7 +127,7 @@ fn process_command_line(mut pargs: Arguments) -> anyhow::Result<ConfigSettings> 
 
     if algo.is_err() {
         return Err(anyhow::anyhow!(
-            "Algorithm can be: CRC32, MD5, SHA1, SHA2 / SHA2-256, SHA2-224, SHA2-384, SHA2-512, SHA3 / SHA3-256, SHA3-384, SHA3-512, WHIRLPOOL, BLAKE2S-256, BLAKE2B-512. Default is {DEFAULT_HASH:?}",
+            "Algorithm can be: CRC32, MD5, SHA1, SHA2 / SHA2-256 / SHA-256, SHA2-224, SHA2-384, SHA2-512, SHA3 / SHA3-256, SHA3-384, SHA3-512, WHIRLPOOL, BLAKE2S-256, BLAKE2B-512. Default is {DEFAULT_HASH:?}",
         ));
     }
 
@@ -268,11 +268,11 @@ fn file_hashes_st(config: &ConfigSettings, paths: &[String]) {
         let file_hash = call_hasher(config.algorithm, config.encoding, pathstr);
 
         match file_hash {
-            Ok(BasicHash(_0)) => {
+            Ok(BasicHash(h)) => {
                 if config.exclude_fn {
-                    println!("{}", _0);
+                    println!("{h}");
                 } else {
-                    println!("{} {}", _0, pathstr);
+                    println!("{h} {pathstr}");
                 }
             }
             Err(e) => eprintln!("'{pathstr}' file err {e:?}"),
