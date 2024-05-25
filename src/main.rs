@@ -268,11 +268,11 @@ fn file_hashes_st(config: &ConfigSettings, paths: &[String]) {
         let file_hash = call_hasher(config.algorithm, config.encoding, pathstr);
 
         match file_hash {
-            Ok(BasicHash(h)) => {
+            Ok(basic_hash) => {
                 if config.exclude_fn {
-                    println!("{h}");
+                    println!("{basic_hash}");
                 } else {
-                    println!("{h} {pathstr}");
+                    println!("{basic_hash} {pathstr}");
                 }
             }
             Err(e) => eprintln!("'{pathstr}' file err {e:?}"),

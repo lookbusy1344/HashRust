@@ -1,3 +1,5 @@
+use std::fmt;
+
 use git_version::git_version;
 use strum::EnumString;
 
@@ -56,6 +58,13 @@ pub enum OutputEncoding {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 /// Basic hash string. This is a wrapper around a String
 pub struct BasicHash(pub String);
+
+/// Implement Display for BasicHash
+impl fmt::Display for BasicHash {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
 
 #[allow(clippy::struct_excessive_bools)]
 #[readonly::make]
