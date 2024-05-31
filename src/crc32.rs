@@ -18,14 +18,12 @@ pub struct Crc32(Hasher);
 impl Crc32 {
     /// Creates a new `Crc32`.
     #[inline]
-    #[allow(clippy::must_use_candidate)]
     pub fn new() -> Self {
         Self(Hasher::new())
     }
 
     /// Creates a new `Crc32` initialized with the given state.
     #[inline]
-    #[allow(clippy::must_use_candidate)]
     pub fn from_state(state: u32) -> Self {
         Self(Hasher::new_with_initial(state))
     }
