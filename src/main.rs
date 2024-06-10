@@ -161,14 +161,12 @@ fn process_command_line(mut pargs: Arguments) -> anyhow::Result<ConfigSettings> 
 
     // make sure CRC32 is only output as U32
     if algo == HashAlgorithm::CRC32 && encoding != OutputEncoding::U32 {
-        return Err(anyhow::anyhow!("CRC32 can only be output as U32",));
+        panic!("CRC32 can only be output as U32");
     }
 
     // make sure other algorithms are not output as U32
     if algo != HashAlgorithm::CRC32 && encoding == OutputEncoding::U32 {
-        return Err(anyhow::anyhow!(
-            "This algorithm cannot be output as U32, please choose another encoding",
-        ));
+        panic!("This algorithm cannot be output as U32, please choose another encoding");
     }
 
     // build the config struct
