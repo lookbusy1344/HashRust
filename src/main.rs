@@ -342,22 +342,20 @@ fn call_hasher(
 
 /// convert hash algorithm string into an enum
 fn parse_hash_algorithm(algorithm: &Option<String>) -> Result<HashAlgorithm, strum::ParseError> {
-    if algorithm.is_none() || algorithm.as_ref().unwrap().is_empty() {
-        // no algorithm specified, use the default
-        return Ok(DEFAULT_HASH);
+    match algorithm {
+        None => Ok(DEFAULT_HASH), // no algorithm specified, use the default
+        Some(algo_str) if algo_str.is_empty() => Ok(DEFAULT_HASH), // empty string, use the default
+        Some(algo_str) => HashAlgorithm::from_str(algo_str), // parse the string
     }
-
-    HashAlgorithm::from_str(algorithm.as_ref().unwrap())
 }
 
 /// convert output encoding string into an enum
 fn parse_hash_encoding(encoding: &Option<String>) -> Result<OutputEncoding, strum::ParseError> {
-    if encoding.is_none() || encoding.as_ref().unwrap().is_empty() {
-        // no algorithm specified, use the default
-        return Ok(OutputEncoding::Unspecified);
+    match encoding {
+        None => Ok(OutputEncoding::Unspecified),
+        Some(enc_str) if enc_str.is_empty() => Ok(OutputEncoding::Unspecified),
+        Some(enc_str) => OutputEncoding::from_str(enc_str),
     }
-
-    OutputEncoding::from_str(encoding.as_ref().unwrap())
 }
 
 /// Show help message
