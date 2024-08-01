@@ -343,18 +343,16 @@ fn call_hasher(
 /// convert hash algorithm string into an enum
 fn parse_hash_algorithm(algorithm: &Option<String>) -> Result<HashAlgorithm, strum::ParseError> {
     match algorithm {
-        None => Ok(DEFAULT_HASH), // no algorithm specified, use the default
-        Some(algo_str) if algo_str.is_empty() => Ok(DEFAULT_HASH), // empty string, use the default
-        Some(algo_str) => HashAlgorithm::from_str(algo_str), // parse the string
+        Some(algo_str) if !algo_str.is_empty() => HashAlgorithm::from_str(algo_str), // parse the string
+        _ => Ok(DEFAULT_HASH), // no algorithm specified (None, or empty string), use the default
     }
 }
 
 /// convert output encoding string into an enum
 fn parse_hash_encoding(encoding: &Option<String>) -> Result<OutputEncoding, strum::ParseError> {
     match encoding {
-        None => Ok(OutputEncoding::Unspecified),
-        Some(enc_str) if enc_str.is_empty() => Ok(OutputEncoding::Unspecified),
-        Some(enc_str) => OutputEncoding::from_str(enc_str),
+        Some(enc_str) if !enc_str.is_empty() => OutputEncoding::from_str(enc_str), // parse the string
+        _ => Ok(OutputEncoding::Unspecified), // no encoding specified (None, or empty string), use the default
     }
 }
 
