@@ -1,8 +1,8 @@
 use std::io::Write;
 
 use crc32fast::Hasher;
-use digest::{FixedOutput, HashMarker, Output, OutputSizeUser, Reset, Update};
 pub use digest::Digest;
+use digest::{FixedOutput, HashMarker, Output, OutputSizeUser, Reset, Update};
 use generic_array::typenum::U4;
 
 // Updated from https://github.com/ajungren/crc32_digest
@@ -29,8 +29,15 @@ impl Crc32 {
     }
 }
 
+// Indicate that the Crc32 struct is a Digest algorithm (a hash function)
 impl HashMarker for Crc32 {}
 
+// Indicate that the Crc32 struct has a fixed output size of 4 bytes
+impl OutputSizeUser for Crc32 {
+    type OutputSize = U4;
+}
+
+// Update the hash with the provided data
 impl Update for Crc32 {
     #[inline]
     fn update(&mut self, data: &[u8]) {
@@ -38,10 +45,7 @@ impl Update for Crc32 {
     }
 }
 
-impl OutputSizeUser for Crc32 {
-    type OutputSize = U4;
-}
-
+// Finalize the hash and write it into the provided buffer
 impl FixedOutput for Crc32 {
     #[inline]
     fn finalize_into(self, out: &mut Output<Self>) {
@@ -53,6 +57,7 @@ impl FixedOutput for Crc32 {
     }
 }
 
+// Reset the hash to its initial state
 impl Reset for Crc32 {
     #[inline]
     fn reset(&mut self) {
@@ -60,6 +65,7 @@ impl Reset for Crc32 {
     }
 }
 
+// Write data into the hash
 impl Write for Crc32 {
     #[inline]
     fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
