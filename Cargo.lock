@@ -126,9 +126,9 @@ dependencies = [
 
 [[package]]
 name = "generic-array"
-version = "1.1.0"
+version = "1.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "96512db27971c2c3eece70a1e106fbe6c87760234e31e8f7e5634912fe52794a"
+checksum = "2cb8bc4c28d15ade99c7e90b219f30da4be5c88e586277e8cbe886beeb868ab2"
 dependencies = [
  "typenum",
 ]
@@ -169,7 +169,7 @@ dependencies = [
  "crc32fast",
  "data-encoding",
  "digest",
- "generic-array 1.1.0",
+ "generic-array 1.1.1",
  "git-version",
  "glob",
  "hex",
