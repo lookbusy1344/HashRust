@@ -13,16 +13,16 @@ const BUFFER_SIZE: usize = 4096 * 8;
 /// Hash a file using the given hasher as a Digest implementation, eg `Sha1`, `Sha256`, `Sha3_256`
 /// Returns Output<D>, which is an owned fixed size array of u8
 /// Output<D> = `GenericArray<u8, <D as OutputSizeUser>::OutputSize>`
-fn hash_file<D: Digest>(filename: &str) -> anyhow::Result<Output<D>> {
-    let filesize = usize::try_from(file_size(filename)?).ok();
+fn hash_file<D: Digest>(filename: impl AsRef<str>) -> anyhow::Result<Output<D>> {
+    let filesize = usize::try_from(file_size(filename.as_ref())?).ok();
 
     if filesize.map_or(false, |size| size <= BUFFER_SIZE) {
         // this file is smaller than the buffer size, so we can hash it all at once
-        return hash_file_whole::<D>(filename);
+        return hash_file_whole::<D>(filename.as_ref());
     }
 
     // read the file in chunks
-    let file = File::open(filename)?;
+    let file = File::open(filename.as_ref())?;
     let mut reader = BufReader::new(file);
     let mut buffer = build_heap_buffer(BUFFER_SIZE);
 
@@ -57,7 +57,7 @@ fn hash_file_whole<D: Digest>(filename: &str) -> anyhow::Result<Output<D>> {
 /// Hash a file using the given hasher as a Digest implementation, and encode the output
 #[inline]
 pub fn hash_file_encoded<D: Digest>(
-    filename: &str,
+    filename: impl AsRef<str>,
     encoding: OutputEncoding,
 ) -> anyhow::Result<BasicHash> {
     let h = hash_file::<D>(filename)?;

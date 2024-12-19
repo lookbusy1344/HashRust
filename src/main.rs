@@ -3,6 +3,7 @@
 // #![allow(unused_variables)]
 
 use std::ffi::OsString;
+use std::fmt::Display;
 use std::io;
 use std::io::BufRead;
 use std::str::FromStr;
@@ -22,7 +23,7 @@ use classes::OutputEncoding;
 use hasher::{file_exists, hash_file_encoded};
 
 use crate::classes::{
-    BasicHash, ConfigSettings, DEFAULT_HASH, GIT_VERSION_SHORT, HashAlgorithm, HELP, VERSION,
+    BasicHash, ConfigSettings, HashAlgorithm, DEFAULT_HASH, GIT_VERSION_SHORT, HELP, VERSION,
 };
 
 mod classes;
@@ -256,7 +257,7 @@ fn get_paths_matching_glob(config: &ConfigSettings) -> anyhow::Result<Vec<String
 }
 
 /// output all file hashes matching a pattern, directly to stdout. Single-threaded
-fn file_hashes_st(config: &ConfigSettings, paths: &[String]) {
+fn file_hashes_st<S: AsRef<str> + Display>(config: &ConfigSettings, paths: &[S]) {
     if config.debug_mode {
         eprintln!("Single-threaded mode");
         eprintln!("Algorithm: {:?}", config.algorithm);
@@ -279,7 +280,7 @@ fn file_hashes_st(config: &ConfigSettings, paths: &[String]) {
 }
 
 /// output all file hashes matching a pattern, directly to stdout. Multithreaded version
-fn file_hashes_mt(config: &ConfigSettings, paths: &[String]) {
+fn file_hashes_mt<S: AsRef<str> + Send + Sync + Display>(config: &ConfigSettings, paths: &[S]) {
     if config.debug_mode {
         eprintln!("Multi-threaded mode");
         eprintln!("Algorithm: {:?}", config.algorithm);
@@ -308,7 +309,7 @@ fn file_hashes_mt(config: &ConfigSettings, paths: &[String]) {
 fn call_hasher(
     algo: HashAlgorithm,
     encoding: OutputEncoding,
-    path: &str,
+    path: impl AsRef<str>,
 ) -> anyhow::Result<BasicHash> {
     // panic if algo is CRC32 and output is not U32
     assert!(
