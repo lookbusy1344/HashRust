@@ -18,7 +18,7 @@ fn hash_file<D: Digest>(filename: impl AsRef<str>) -> anyhow::Result<Output<D>> 
 
     if filesize.map_or(false, |size| size <= BUFFER_SIZE) {
         // this file is smaller than the buffer size, so we can hash it all at once
-        return hash_file_whole::<D>(filename.as_ref());
+        return hash_file_whole::<D>(filename);
     }
 
     // read the file in chunks
@@ -45,8 +45,8 @@ fn hash_file<D: Digest>(filename: impl AsRef<str>) -> anyhow::Result<Output<D>> 
 }
 
 /// Hash the entire file at once
-fn hash_file_whole<D: Digest>(filename: &str) -> anyhow::Result<Output<D>> {
-    let data = std::fs::read(filename)?;
+fn hash_file_whole<D: Digest>(filename: impl AsRef<str>) -> anyhow::Result<Output<D>> {
+    let data = std::fs::read(filename.as_ref())?;
     let mut hasher = D::new();
     hasher.update(&data);
 
@@ -85,8 +85,8 @@ pub fn file_exists(path: impl AsRef<Path>) -> bool {
 }
 
 /// get the size of the file
-fn file_size(path: &str) -> anyhow::Result<u64> {
-    let path = Path::new(path);
+fn file_size(path: impl AsRef<str>) -> anyhow::Result<u64> {
+    let path = Path::new(path.as_ref());
     if path.exists() && path.is_file() {
         Ok(path.metadata()?.len())
     } else {

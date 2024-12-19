@@ -253,7 +253,10 @@ fn get_paths_matching_glob(config: &ConfigSettings) -> anyhow::Result<Vec<String
 }
 
 /// output all file hashes matching a pattern, directly to stdout. Single-threaded
-fn file_hashes_st<S: AsRef<str> + Display>(config: &ConfigSettings, paths: &[S]) {
+fn file_hashes_st<S>(config: &ConfigSettings, paths: &[S])
+where
+    S: AsRef<str> + Display,
+{
     if config.debug_mode {
         eprintln!("Single-threaded mode");
         eprintln!("Algorithm: {:?}", config.algorithm);
@@ -276,7 +279,10 @@ fn file_hashes_st<S: AsRef<str> + Display>(config: &ConfigSettings, paths: &[S])
 }
 
 /// output all file hashes matching a pattern, directly to stdout. Multithreaded version
-fn file_hashes_mt<S: AsRef<str> + Send + Sync + Display>(config: &ConfigSettings, paths: &[S]) {
+fn file_hashes_mt<S>(config: &ConfigSettings, paths: &[S])
+where
+    S: AsRef<str> + Sync + Display,
+{
     if config.debug_mode {
         eprintln!("Multi-threaded mode");
         eprintln!("Algorithm: {:?}", config.algorithm);
