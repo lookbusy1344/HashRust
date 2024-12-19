@@ -59,7 +59,7 @@ pub enum OutputEncoding {
 /// Basic hash string. This is a wrapper around a String
 pub struct BasicHash(pub String);
 
-/// Implement Display for BasicHash
+/// Implement Display for `BasicHash`
 impl fmt::Display for BasicHash {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.0)

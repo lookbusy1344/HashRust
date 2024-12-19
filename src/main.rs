@@ -124,7 +124,7 @@ fn show_initial_info(config: &ConfigSettings) {
 fn process_command_line(mut pargs: Arguments) -> anyhow::Result<ConfigSettings> {
     // get algorithm as string and parse it
     let algo_str: Option<String> = pargs.opt_value_from_str(["-a", "--algorithm"])?;
-    let algo = parse_hash_algorithm(&algo_str);
+    let algo = parse_hash_algorithm(algo_str.as_ref());
 
     if algo.is_err() {
         return Err(anyhow::anyhow!(
@@ -134,7 +134,7 @@ fn process_command_line(mut pargs: Arguments) -> anyhow::Result<ConfigSettings> 
 
     // get output encoding as string and parse it
     let encoding_str: Option<String> = pargs.opt_value_from_str(["-e", "--encoding"])?;
-    let encoding = parse_hash_encoding(&encoding_str);
+    let encoding = parse_hash_encoding(encoding_str.as_ref());
 
     if encoding.is_err() {
         return Err(anyhow::anyhow!(
@@ -161,14 +161,16 @@ fn process_command_line(mut pargs: Arguments) -> anyhow::Result<ConfigSettings> 
     };
 
     // make sure CRC32 is only output as U32
-    if algo == HashAlgorithm::CRC32 && encoding != OutputEncoding::U32 {
-        panic!("CRC32 can only be output as U32");
-    }
+    assert!(
+        !(algo == HashAlgorithm::CRC32 && encoding != OutputEncoding::U32),
+        "CRC32 can only be output as U32"
+    );
 
     // make sure other algorithms are not output as U32
-    if algo != HashAlgorithm::CRC32 && encoding == OutputEncoding::U32 {
-        panic!("This algorithm cannot be output as U32, please choose another encoding");
-    }
+    assert!(
+        !(algo != HashAlgorithm::CRC32 && encoding == OutputEncoding::U32),
+        "This algorithm cannot be output as U32, please choose another encoding"
+    );
 
     // build the config struct
     let mut config = ConfigSettings::new(
@@ -342,7 +344,7 @@ fn call_hasher(
 }
 
 /// convert hash algorithm string into an enum
-fn parse_hash_algorithm(algorithm: &Option<String>) -> Result<HashAlgorithm, strum::ParseError> {
+fn parse_hash_algorithm(algorithm: Option<&String>) -> Result<HashAlgorithm, strum::ParseError> {
     match algorithm {
         Some(algo_str) if !algo_str.is_empty() => HashAlgorithm::from_str(algo_str), // parse the string
         _ => Ok(DEFAULT_HASH), // no algorithm specified (None, or empty string), use the default
@@ -350,7 +352,7 @@ fn parse_hash_algorithm(algorithm: &Option<String>) -> Result<HashAlgorithm, str
 }
 
 /// convert output encoding string into an enum
-fn parse_hash_encoding(encoding: &Option<String>) -> Result<OutputEncoding, strum::ParseError> {
+fn parse_hash_encoding(encoding: Option<&String>) -> Result<OutputEncoding, strum::ParseError> {
     match encoding {
         Some(enc_str) if !enc_str.is_empty() => OutputEncoding::from_str(enc_str), // parse the string
         _ => Ok(OutputEncoding::Unspecified), // no encoding specified (None, or empty string), use the default
