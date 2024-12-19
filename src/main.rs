@@ -160,16 +160,10 @@ fn process_command_line(mut pargs: Arguments) -> anyhow::Result<ConfigSettings> 
         e
     };
 
-    // make sure CRC32 is only output as U32
     assert!(
-        !(algo == HashAlgorithm::CRC32 && encoding != OutputEncoding::U32),
-        "CRC32 can only be output as U32"
-    );
-
-    // make sure other algorithms are not output as U32
-    assert!(
-        !(algo != HashAlgorithm::CRC32 && encoding == OutputEncoding::U32),
-        "This algorithm cannot be output as U32, please choose another encoding"
+        (algo == HashAlgorithm::CRC32 && encoding == OutputEncoding::U32)
+            || (algo != HashAlgorithm::CRC32 && encoding != OutputEncoding::U32),
+        "CRC32 can only be output as U32, and other algorithms cannot be output as U32"
     );
 
     // build the config struct
