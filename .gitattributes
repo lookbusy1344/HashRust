@@ -1,1 +1,3 @@
 *.rs eol=lf
+*.yml eol=lf
+*.toml eol=lf
