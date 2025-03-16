@@ -102,8 +102,10 @@ fn get_required_filenames(config: &ConfigSettings) -> anyhow::Result<Vec<String>
     };
 
     // limit the number of paths if required
-    if config.limit_num.is_some() && paths.len() > config.limit_num.unwrap() {
-        paths.truncate(config.limit_num.unwrap());
+    if let Some(limit) = config.limit_num {
+        if paths.len() > limit {
+            paths.truncate(limit);
+        }
     }
 
     Ok(paths)
@@ -234,7 +236,9 @@ fn get_paths_matching_glob(config: &ConfigSettings) -> anyhow::Result<Vec<String
     //assert!(config.supplied_path.is_some());
 
     // have to clone to unwrap the string, because the struct is borrowed
-    let pattern = config.supplied_path.clone().unwrap();
+    let pattern = config.supplied_path.clone().ok_or(anyhow::anyhow!(
+        "Supplied path is None, but should have been Some"
+    ))?;
 
     let temp_paths = glob::glob_with(&pattern, glob_settings)?;
 
