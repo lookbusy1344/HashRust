@@ -145,10 +145,8 @@ fn process_command_line(mut pargs: Arguments) -> anyhow::Result<ConfigSettings> 
         other => other,
     };
 
-    assert!(
-        (algo == HashAlgorithm::CRC32) == (encoding == OutputEncoding::U32),
-        "CRC32 must use U32 encoding, and U32 encoding can only be used with CRC32"
-    );
+    assert_eq!(algo == HashAlgorithm::CRC32, encoding == OutputEncoding::U32,
+               "CRC32 must use U32 encoding, and U32 encoding can only be used with CRC32");
 
     // build the config struct
     let mut config = ConfigSettings::new(
@@ -186,24 +184,21 @@ fn process_command_line(mut pargs: Arguments) -> anyhow::Result<ConfigSettings> 
 /// read from standard input and return a vector of strings
 fn get_paths_from_stdin(config: &ConfigSettings) -> anyhow::Result<Vec<String>> {
     let stdin = io::stdin();
-    let mut lines = Vec::with_capacity(20);
+    let lines = stdin
+        .lock()
+        .lines()
+        .collect::<Result<Vec<String>, _>>()?;
 
-    for line in stdin.lock().lines() {
-        match line {
-            Ok(line) => {
-                if file_exists(&line) {
-                    lines.push(line);
-                } else if config.debug_mode {
-                    eprintln!("Not a file: {line}");
-                }
+    Ok(lines
+        .into_iter()
+        .filter(|line| {
+            let is_file = file_exists(line);
+            if !is_file && config.debug_mode {
+                eprintln!("Not a file: {line}");
             }
-
-            // problem reading line, I'm bailing out here and not just displaying an error
-            Err(e) => return Err(e.into()), //eprintln!("read_stdin err {:?}", e),
-        }
-    }
-
-    Ok(lines)
+            is_file
+        })
+        .collect())
 }
 
 /// function to take a glob and return a vector of path strings
