@@ -95,17 +95,15 @@ fn worker_func() -> anyhow::Result<()> {
 /// get the required files, either using supplied path or from reading stdin
 fn get_required_filenames(config: &ConfigSettings) -> anyhow::Result<Vec<String>> {
     let mut paths = if config.supplied_path.is_none() {
-        // no path specified, read from stdin
+        // No path specified, read from stdin
         get_paths_from_stdin(config)?
     } else {
         get_paths_matching_glob(config)?
     };
 
-    // limit the number of paths if required
+    // Limit the number of paths if required
     if let Some(limit) = config.limit_num {
-        if paths.len() > limit {
-            paths.truncate(limit);
-        }
+        paths.truncate(limit);
     }
 
     Ok(paths)
@@ -148,9 +146,8 @@ fn process_command_line(mut pargs: Arguments) -> anyhow::Result<ConfigSettings> 
     };
 
     assert!(
-        (algo == HashAlgorithm::CRC32 && encoding == OutputEncoding::U32)
-            || (algo != HashAlgorithm::CRC32 && encoding != OutputEncoding::U32),
-        "CRC32 can only be output as U32, and other algorithms cannot be output as U32"
+        (algo == HashAlgorithm::CRC32) == (encoding == OutputEncoding::U32),
+        "CRC32 must use U32 encoding, and U32 encoding can only be used with CRC32"
     );
 
     // build the config struct
