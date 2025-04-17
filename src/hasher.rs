@@ -17,31 +17,25 @@ fn hash_file<D: Digest>(filename: impl AsRef<str>) -> anyhow::Result<Output<D>> 
     let filesize = usize::try_from(file_size(filename.as_ref())?).ok();
 
     if filesize.is_some_and(|size| size <= BUFFER_SIZE) {
-        // this file is smaller than the buffer size, so we can hash it all at once
+        // Small file optimization - hash it all at once
         return hash_file_whole::<D>(filename);
     }
 
-    // read the file in chunks
+    // For larger files, read in chunks
     let file = File::open(filename.as_ref())?;
     let mut reader = BufReader::new(file);
     let mut buffer = build_heap_buffer(BUFFER_SIZE);
-
     let mut hasher = D::new();
-    loop {
-        let bytes_read = reader.read(&mut buffer)?;
+
+    // More efficient reading pattern
+    while let Ok(bytes_read) = reader.read(&mut buffer) {
         if bytes_read == 0 {
-            break; // nothing more to read
+            break;
         }
         hasher.update(&buffer[..bytes_read]);
-        if bytes_read < BUFFER_SIZE {
-            break; // we've reached the end of the file
-        }
     }
 
-    // Output<T> = GenericArray<u8, <T as OutputSizeUser>::OutputSize>
-    // just return this directly to avoid an extra allocation
-    let hash_array = hasher.finalize();
-    Ok(hash_array)
+    Ok(hasher.finalize())
 }
 
 /// Hash the entire file at once
@@ -50,8 +44,7 @@ fn hash_file_whole<D: Digest>(filename: impl AsRef<str>) -> anyhow::Result<Outpu
     let mut hasher = D::new();
     hasher.update(&data);
 
-    let hash_array = hasher.finalize();
-    Ok(hash_array)
+    Ok(hasher.finalize())
 }
 
 /// Hash a file using the given hasher as a Digest implementation, and encode the output
@@ -62,7 +55,8 @@ pub fn hash_file_encoded<D: Digest>(
 ) -> anyhow::Result<BasicHash> {
     let h = hash_file::<D>(filename)?;
 
-    let encoded = match encoding {
+    // Convert hash directly to BasicHash without separate variable
+    Ok(BasicHash(match encoding {
         OutputEncoding::Hex | OutputEncoding::Unspecified => hex::encode(h),
         OutputEncoding::Base64 => BASE64.encode(&h),
         OutputEncoding::Base32 => BASE32.encode(&h),
@@ -73,9 +67,7 @@ pub fn hash_file_encoded<D: Digest>(
             let number = BigEndian::read_u32(&h);
             format!("{number:010}")
         }
-    };
-
-    Ok(BasicHash(encoded))
+    }))
 }
 
 /// check if file exists
