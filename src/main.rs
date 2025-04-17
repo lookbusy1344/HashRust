@@ -126,40 +126,25 @@ fn show_initial_info(config: &ConfigSettings) {
 fn process_command_line(mut pargs: Arguments) -> anyhow::Result<ConfigSettings> {
     // get algorithm as string and parse it
     let algo_str: Option<String> = pargs.opt_value_from_str(["-a", "--algorithm"])?;
-    let algo = parse_hash_algorithm(algo_str.as_ref());
-
-    if algo.is_err() {
-        return Err(anyhow::anyhow!(
-            "Algorithm can be: CRC32, MD5, SHA1, SHA2 / SHA2-256 / SHA-256, SHA2-224, SHA2-384, SHA2-512, SHA3 / SHA3-256, SHA3-384, SHA3-512, WHIRLPOOL, BLAKE2S-256, BLAKE2B-512. Default is {DEFAULT_HASH:?}",
-        ));
-    }
+    let algo = parse_hash_algorithm(algo_str.as_ref()).map_err(|_| {
+        anyhow::anyhow!(
+        "Algorithm can be: CRC32, MD5, SHA1, SHA2 / SHA2-256 / SHA-256, SHA2-224, SHA2-384, SHA2-512, SHA3 / SHA3-256, SHA3-384, SHA3-512, WHIRLPOOL, BLAKE2S-256, BLAKE2B-512. Default is {DEFAULT_HASH:?}",
+    )
+    })?;
 
     // get output encoding as string and parse it
     let encoding_str: Option<String> = pargs.opt_value_from_str(["-e", "--encoding"])?;
-    let encoding = parse_hash_encoding(encoding_str.as_ref());
+    let encoding = parse_hash_encoding(encoding_str.as_ref()).map_err(|_| {
+        anyhow::anyhow!(
+        "Encoding can be: Hex, Base64, Base32. Default is Hex",
+    )
+    })?;
 
-    if encoding.is_err() {
-        return Err(anyhow::anyhow!(
-            "Encoding can be: Hex, Base64, Base32. Default is Hex",
-        ));
-    }
-
-    let algo = algo.unwrap(); // unwrap the algorithm
-
-    // unwrap, and properly assign the default encoding
-    let encoding = {
-        let mut e = encoding.unwrap();
-
-        if e == OutputEncoding::Unspecified {
-            e = if algo == HashAlgorithm::CRC32 {
-                OutputEncoding::U32 // default for CRC32
-            } else {
-                OutputEncoding::Hex // default for everything else
-            };
-        }
-
-        // return the encoding, to be assigned to the variable
-        e
+    // properly assign the default encoding
+    let encoding = match encoding {
+        OutputEncoding::Unspecified if algo == HashAlgorithm::CRC32 => OutputEncoding::U32,
+        OutputEncoding::Unspecified => OutputEncoding::Hex,
+        other => other,
     };
 
     assert!(
