@@ -10,7 +10,6 @@ use std::str::FromStr;
 
 //use crate::hasher::hash_file_crc32;
 use blake2::{Blake2b512, Blake2s256};
-use glob::GlobResult;
 use md5::Md5;
 use pico_args::Arguments;
 use rayon::prelude::*;
@@ -209,28 +208,20 @@ fn get_paths_matching_glob(config: &ConfigSettings) -> anyhow::Result<Vec<String
         require_literal_leading_dot: false,
     };
 
-    // we've already checked config.supplied_path is not None
-    //assert!(config.supplied_path.is_some());
-
-    // have to clone to unwrap the string, because the struct is borrowed
-    let pattern = config.supplied_path.clone().ok_or(anyhow::anyhow!(
+    let pattern = config.supplied_path.as_ref().ok_or_else(|| anyhow::anyhow!(
         "Supplied path is None, but should have been Some"
     ))?;
 
-    let temp_paths = glob::glob_with(&pattern, glob_settings)?;
-
-    // filter out non-files
-    let path_globs: Vec<GlobResult> = temp_paths
-        .filter(|x| x.as_ref().unwrap().is_file())
-        .collect();
-
-    // convert to vector of strings
-    let paths: Vec<String> = path_globs
-        .into_iter()
-        .map(|x| x.unwrap().to_string_lossy().to_string())
-        .collect();
-
-    Ok(paths)
+    Ok(glob::glob_with(pattern, glob_settings)?
+        .filter_map(|entry| {
+            match entry {
+                Ok(path) if path.is_file() => {
+                    Some(path.to_string_lossy().into_owned())
+                }
+                _ => None,
+            }
+        })
+        .collect())
 }
 
 /// output all file hashes matching a pattern, directly to stdout. Single-threaded
