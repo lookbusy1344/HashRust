@@ -123,7 +123,7 @@ fn show_initial_info(config: &ConfigSettings) {
 fn process_command_line(mut pargs: Arguments) -> anyhow::Result<ConfigSettings> {
     // get algorithm as string and parse it
     let algo_str: Option<String> = pargs.opt_value_from_str(["-a", "--algorithm"])?;
-    let algo = parse_hash_algorithm(algo_str.as_ref()).map_err(|_| {
+    let algo = parse_hash_algorithm(algo_str.as_deref()).map_err(|_| {
         anyhow::anyhow!(
         "Algorithm can be: CRC32, MD5, SHA1, SHA2 / SHA2-256 / SHA-256, SHA2-224, SHA2-384, SHA2-512, SHA3 / SHA3-256, SHA3-384, SHA3-512, WHIRLPOOL, BLAKE2S-256, BLAKE2B-512. Default is {DEFAULT_HASH:?}",
     )
@@ -131,7 +131,7 @@ fn process_command_line(mut pargs: Arguments) -> anyhow::Result<ConfigSettings> 
 
     // get output encoding as string and parse it
     let encoding_str: Option<String> = pargs.opt_value_from_str(["-e", "--encoding"])?;
-    let encoding = parse_hash_encoding(encoding_str.as_ref()).map_err(|_| {
+    let encoding = parse_hash_encoding(encoding_str.as_deref()).map_err(|_| {
         anyhow::anyhow!(
         "Encoding can be: Hex, Base64, Base32. Default is Hex",
     )
@@ -315,19 +315,19 @@ fn call_hasher(
     }
 }
 
-/// convert hash algorithm string into an enum
-fn parse_hash_algorithm(algorithm: Option<&String>) -> Result<HashAlgorithm, strum::ParseError> {
+/// Convert hash algorithm string into an enum
+fn parse_hash_algorithm(algorithm: Option<&str>) -> Result<HashAlgorithm, strum::ParseError> {
     match algorithm {
-        Some(algo_str) if !algo_str.is_empty() => HashAlgorithm::from_str(algo_str), // parse the string
-        _ => Ok(DEFAULT_HASH), // no algorithm specified (None, or empty string), use the default
+        Some(algo_str) if !algo_str.is_empty() => HashAlgorithm::from_str(algo_str),
+        _ => Ok(DEFAULT_HASH),
     }
 }
 
-/// convert output encoding string into an enum
-fn parse_hash_encoding(encoding: Option<&String>) -> Result<OutputEncoding, strum::ParseError> {
+/// Convert output encoding string into an enum
+fn parse_hash_encoding(encoding: Option<&str>) -> Result<OutputEncoding, strum::ParseError> {
     match encoding {
-        Some(enc_str) if !enc_str.is_empty() => OutputEncoding::from_str(enc_str), // parse the string
-        _ => Ok(OutputEncoding::Unspecified), // no encoding specified (None, or empty string), use the default
+        Some(enc_str) if !enc_str.is_empty() => OutputEncoding::from_str(enc_str),
+        _ => Ok(OutputEncoding::Unspecified),
     }
 }
 
