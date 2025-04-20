@@ -62,7 +62,11 @@ pub fn hash_file_encoded<D: Digest>(
         OutputEncoding::Base32 => BASE32.encode(&h),
         OutputEncoding::U32 => {
             // check if h size is 4 bytes
-            assert_eq!(h.len(), 4, "Hash size is not 4 bytes, but u32 requested");
+            if h.len() != 4 {
+                return Err(anyhow::anyhow!(
+                    "When U32 is requested, hash size must be 4 bytes"
+                ));
+            }
 
             let number = BigEndian::read_u32(&h);
             format!("{number:010}")

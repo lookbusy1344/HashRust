@@ -8,6 +8,8 @@ use std::io;
 use std::io::BufRead;
 use std::str::FromStr;
 
+use anyhow::{Result, anyhow};
+
 //use crate::hasher::hash_file_crc32;
 use blake2::{Blake2b512, Blake2s256};
 use md5::Md5;
@@ -22,7 +24,7 @@ use classes::OutputEncoding;
 use hasher::{file_exists, hash_file_encoded};
 
 use crate::classes::{
-    BasicHash, ConfigSettings, HashAlgorithm, DEFAULT_HASH, GIT_VERSION_SHORT, HELP, VERSION,
+    BasicHash, ConfigSettings, DEFAULT_HASH, GIT_VERSION_SHORT, HELP, HashAlgorithm, VERSION,
 };
 
 mod classes;
@@ -124,7 +126,7 @@ fn process_command_line(mut pargs: Arguments) -> anyhow::Result<ConfigSettings> 
     // get algorithm as string and parse it
     let algo_str: Option<String> = pargs.opt_value_from_str(["-a", "--algorithm"])?;
     let algo = parse_hash_algorithm(algo_str.as_deref()).map_err(|_| {
-        anyhow::anyhow!(
+        anyhow!(
         "Algorithm can be: CRC32, MD5, SHA1, SHA2 / SHA2-256 / SHA-256, SHA2-224, SHA2-384, SHA2-512, SHA3 / SHA3-256, SHA3-384, SHA3-512, WHIRLPOOL, BLAKE2S-256, BLAKE2B-512. Default is {DEFAULT_HASH:?}",
     )
     })?;
@@ -132,7 +134,7 @@ fn process_command_line(mut pargs: Arguments) -> anyhow::Result<ConfigSettings> 
     // get output encoding as string and parse it
     let encoding_str: Option<String> = pargs.opt_value_from_str(["-e", "--encoding"])?;
     let encoding = parse_hash_encoding(encoding_str.as_deref())
-        .map_err(|_| anyhow::anyhow!("Encoding can be: Hex, Base64, Base32. Default is Hex",))?;
+        .map_err(|_| anyhow!("Encoding can be: Hex, Base64, Base32. Default is Hex",))?;
 
     // properly assign the default encoding
     let encoding = match encoding {
@@ -141,11 +143,11 @@ fn process_command_line(mut pargs: Arguments) -> anyhow::Result<ConfigSettings> 
         other => other,
     };
 
-    assert_eq!(
-        algo == HashAlgorithm::CRC32,
-        encoding == OutputEncoding::U32,
-        "CRC32 must use U32 encoding, and U32 encoding can only be used with CRC32"
-    );
+    if algo == HashAlgorithm::CRC32 && encoding != OutputEncoding::U32 {
+        return Err(anyhow!(
+            "CRC32 must use U32 encoding, and U32 encoding can only be used with CRC32"
+        ));
+    }
 
     // build the config struct
     let mut config = ConfigSettings::new(
@@ -168,7 +170,7 @@ fn process_command_line(mut pargs: Arguments) -> anyhow::Result<ConfigSettings> 
         1 => Some(remaining_args[0].to_string_lossy().to_string()), // one path given
         _ => {
             // more than one path given, error out
-            return Err(anyhow::anyhow!(
+            return Err(anyhow!(
                 "Only one path parameter can be given, but found {remaining_args:?}"
             ));
         }
@@ -208,7 +210,7 @@ fn get_paths_matching_glob(config: &ConfigSettings) -> anyhow::Result<Vec<String
     let pattern = config
         .supplied_path
         .as_ref()
-        .ok_or_else(|| anyhow::anyhow!("Supplied path is None, but should have been Some"))?;
+        .ok_or_else(|| anyhow!("Supplied path is None, but should have been Some"))?;
 
     Ok(glob::glob_with(pattern, glob_settings)?
         .filter_map(|entry| match entry {
@@ -280,11 +282,11 @@ fn call_hasher(
     path: impl AsRef<str>,
 ) -> anyhow::Result<BasicHash> {
     // panic if algo is CRC32 and output is not U32
-    assert!(
-        (algo == HashAlgorithm::CRC32 && encoding == OutputEncoding::U32)
-            || (algo != HashAlgorithm::CRC32 && encoding != OutputEncoding::U32),
-        "CRC32 can only be output as U32"
-    );
+    if (algo == HashAlgorithm::CRC32 && encoding != OutputEncoding::U32)
+        || (algo != HashAlgorithm::CRC32 && encoding == OutputEncoding::U32)
+    {
+        return Err(anyhow!("CRC32 can only be output as U32"));
+    }
 
     match algo {
         // special case, u32 encoded
@@ -346,10 +348,7 @@ fn args_finished(args: Arguments) -> anyhow::Result<Vec<OsString>> {
     for arg in &unused {
         if arg.to_string_lossy().starts_with('-') {
             // this remaining argument starts with a dash, so it's an unknown argument
-            return Err(anyhow::anyhow!(
-                "Unknown argument: {}",
-                arg.to_string_lossy()
-            ));
+            return Err(anyhow!("Unknown argument: {}", arg.to_string_lossy()));
         }
     }
 
