@@ -33,7 +33,7 @@ mod hasher;
 mod unit_tests;
 
 /// Call the inner worker function, and show help if there is an error
-fn main() -> anyhow::Result<()> {
+fn main() -> Result<()> {
     let result = worker_func();
 
     if let Err(e) = result {
@@ -47,7 +47,7 @@ fn main() -> anyhow::Result<()> {
 }
 
 /// main worker function for entire app
-fn worker_func() -> anyhow::Result<()> {
+fn worker_func() -> Result<()> {
     let mut pargs = Arguments::from_env();
 
     // diagnostic code to set the parameters
@@ -94,7 +94,7 @@ fn worker_func() -> anyhow::Result<()> {
 }
 
 /// get the required files, either using supplied path or from reading stdin
-fn get_required_filenames(config: &ConfigSettings) -> anyhow::Result<Vec<String>> {
+fn get_required_filenames(config: &ConfigSettings) -> Result<Vec<String>> {
     let mut paths = if config.supplied_path.is_none() {
         // No path specified, read from stdin
         get_paths_from_stdin(config)?
@@ -122,7 +122,7 @@ fn show_initial_info(config: &ConfigSettings) {
 }
 
 /// process the command line arguments and return a `ConfigSettings` struct
-fn process_command_line(mut pargs: Arguments) -> anyhow::Result<ConfigSettings> {
+fn process_command_line(mut pargs: Arguments) -> Result<ConfigSettings> {
     // get algorithm as string and parse it
     let algo_str: Option<String> = pargs.opt_value_from_str(["-a", "--algorithm"])?;
     let algo = parse_hash_algorithm(algo_str.as_deref()).map_err(|_| {
@@ -183,7 +183,7 @@ fn process_command_line(mut pargs: Arguments) -> anyhow::Result<ConfigSettings> 
 }
 
 /// read from standard input and return a vector of strings
-fn get_paths_from_stdin(config: &ConfigSettings) -> anyhow::Result<Vec<String>> {
+fn get_paths_from_stdin(config: &ConfigSettings) -> Result<Vec<String>> {
     let stdin = io::stdin();
     let lines = stdin.lock().lines().collect::<Result<Vec<String>, _>>()?;
 
@@ -200,7 +200,7 @@ fn get_paths_from_stdin(config: &ConfigSettings) -> anyhow::Result<Vec<String>> 
 }
 
 /// function to take a glob and return a vector of path strings
-fn get_paths_matching_glob(config: &ConfigSettings) -> anyhow::Result<Vec<String>> {
+fn get_paths_matching_glob(config: &ConfigSettings) -> Result<Vec<String>> {
     let glob_settings = glob::MatchOptions {
         case_sensitive: config.case_sensitive,
         require_literal_separator: false,
@@ -280,7 +280,7 @@ fn call_hasher(
     algo: HashAlgorithm,
     encoding: OutputEncoding,
     path: impl AsRef<str>,
-) -> anyhow::Result<BasicHash> {
+) -> Result<BasicHash> {
     // panic if algo is CRC32 and output is not U32
     if (algo == HashAlgorithm::CRC32 && encoding != OutputEncoding::U32)
         || (algo != HashAlgorithm::CRC32 && encoding == OutputEncoding::U32)
@@ -341,7 +341,7 @@ fn show_help(longform: bool) {
 }
 
 /// Check for unused arguments, and error out if there are any
-fn args_finished(args: Arguments) -> anyhow::Result<Vec<OsString>> {
+fn args_finished(args: Arguments) -> Result<Vec<OsString>> {
     let unused = args.finish();
 
     // check any unused members do not start with a dash
