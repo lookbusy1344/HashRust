@@ -131,11 +131,8 @@ fn process_command_line(mut pargs: Arguments) -> anyhow::Result<ConfigSettings> 
 
     // get output encoding as string and parse it
     let encoding_str: Option<String> = pargs.opt_value_from_str(["-e", "--encoding"])?;
-    let encoding = parse_hash_encoding(encoding_str.as_deref()).map_err(|_| {
-        anyhow::anyhow!(
-        "Encoding can be: Hex, Base64, Base32. Default is Hex",
-    )
-    })?;
+    let encoding = parse_hash_encoding(encoding_str.as_deref())
+        .map_err(|_| anyhow::anyhow!("Encoding can be: Hex, Base64, Base32. Default is Hex",))?;
 
     // properly assign the default encoding
     let encoding = match encoding {
@@ -144,8 +141,11 @@ fn process_command_line(mut pargs: Arguments) -> anyhow::Result<ConfigSettings> 
         other => other,
     };
 
-    assert_eq!(algo == HashAlgorithm::CRC32, encoding == OutputEncoding::U32,
-               "CRC32 must use U32 encoding, and U32 encoding can only be used with CRC32");
+    assert_eq!(
+        algo == HashAlgorithm::CRC32,
+        encoding == OutputEncoding::U32,
+        "CRC32 must use U32 encoding, and U32 encoding can only be used with CRC32"
+    );
 
     // build the config struct
     let mut config = ConfigSettings::new(
@@ -183,10 +183,7 @@ fn process_command_line(mut pargs: Arguments) -> anyhow::Result<ConfigSettings> 
 /// read from standard input and return a vector of strings
 fn get_paths_from_stdin(config: &ConfigSettings) -> anyhow::Result<Vec<String>> {
     let stdin = io::stdin();
-    let lines = stdin
-        .lock()
-        .lines()
-        .collect::<Result<Vec<String>, _>>()?;
+    let lines = stdin.lock().lines().collect::<Result<Vec<String>, _>>()?;
 
     Ok(lines
         .into_iter()
@@ -208,18 +205,15 @@ fn get_paths_matching_glob(config: &ConfigSettings) -> anyhow::Result<Vec<String
         require_literal_leading_dot: false,
     };
 
-    let pattern = config.supplied_path.as_ref().ok_or_else(|| anyhow::anyhow!(
-        "Supplied path is None, but should have been Some"
-    ))?;
+    let pattern = config
+        .supplied_path
+        .as_ref()
+        .ok_or_else(|| anyhow::anyhow!("Supplied path is None, but should have been Some"))?;
 
     Ok(glob::glob_with(pattern, glob_settings)?
-        .filter_map(|entry| {
-            match entry {
-                Ok(path) if path.is_file() => {
-                    Some(path.to_string_lossy().into_owned())
-                }
-                _ => None,
-            }
+        .filter_map(|entry| match entry {
+            Ok(path) if path.is_file() => Some(path.to_string_lossy().into_owned()),
+            _ => None,
         })
         .collect())
 }
