@@ -1,0 +1,7 @@
+[
+  {
+    "label": "Build project",
+    "command": "cargo",
+    "args": ["build"]
+  }
+]
