@@ -78,7 +78,7 @@ pub struct ConfigSettings {
     pub algorithm: HashAlgorithm,
     pub encoding: OutputEncoding,
     pub limit_num: Option<usize>,
-    pub supplied_path: Option<String>,
+    pub supplied_paths: Vec<String>,
 }
 
 impl ConfigSettings {
@@ -101,12 +101,12 @@ impl ConfigSettings {
             algorithm,
             encoding,
             limit_num,
-            supplied_path: None,
+            supplied_paths: Vec::new(),
         }
     }
 
-    pub fn set_supplied_path(&mut self, path: Option<String>) {
-        self.supplied_path = path;
+    pub fn set_supplied_paths(&mut self, paths: Vec<String>) {
+        self.supplied_paths = paths;
     }
 }
 

@@ -8,7 +8,7 @@ use std::io;
 use std::io::BufRead;
 use std::str::FromStr;
 
-use anyhow::{Result, anyhow};
+use anyhow::{anyhow, Result};
 
 //use crate::hasher::hash_file_crc32;
 use blake2::{Blake2b512, Blake2s256};
@@ -24,7 +24,7 @@ use classes::OutputEncoding;
 use hasher::{file_exists, hash_file_encoded};
 
 use crate::classes::{
-    BasicHash, ConfigSettings, DEFAULT_HASH, GIT_VERSION_SHORT, HELP, HashAlgorithm, VERSION,
+    BasicHash, ConfigSettings, HashAlgorithm, DEFAULT_HASH, GIT_VERSION_SHORT, HELP, VERSION,
 };
 
 mod classes;
@@ -95,7 +95,7 @@ fn worker_func() -> Result<()> {
 
 /// get the required files, either using supplied path or from reading stdin
 fn get_required_filenames(config: &ConfigSettings) -> Result<Vec<String>> {
-    let mut paths = if config.supplied_path.is_none() {
+    let mut paths = if config.supplied_paths.is_empty() {
         // No path specified, read from stdin
         get_paths_from_stdin(config)?
     } else {
@@ -114,10 +114,10 @@ fn show_initial_info(config: &ConfigSettings) {
     show_help(false);
     eprintln!();
     eprintln!("Config: {config:?}");
-    if config.supplied_path.is_none() {
+    if config.supplied_paths.is_empty() {
         eprintln!("No path specified, reading from stdin");
     } else {
-        eprintln!("Path: {}", config.supplied_path.as_ref().unwrap());
+        eprintln!("Paths: {} file path(s) supplied", config.supplied_paths.len());
     }
 }
 
@@ -165,19 +165,25 @@ fn process_command_line(mut pargs: Arguments) -> Result<ConfigSettings> {
     let remaining_args = args_finished(pargs)?;
 
     // get the supplied path, if any. Turn the vector into a single Option<String>
-    let supplied_path = match remaining_args.len() {
-        0 => None, // no path, we are expecting to read from stdin
-        1 => Some(remaining_args[0].to_string_lossy().to_string()), // one path given
-        _ => {
-            // more than one path given, error out
-            return Err(anyhow!(
-                "Only one path parameter can be given, but found {remaining_args:?}"
-            ));
-        }
-    };
+    // let supplied_path = match remaining_args.len() {
+    //     0 => None, // no path, we are expecting to read from stdin
+    //     1 => Some(remaining_args[0].to_string_lossy().to_string()), // one path given
+    //     _ => {
+    //         // more than one path given, error out
+    //         return Err(anyhow!(
+    //             "Only one path parameter can be given, but found {remaining_args:?}"
+    //         ));
+    //     }
+    // };
 
-    // add the supplied path to config object
-    config.set_supplied_path(supplied_path);
+    // get the supplied paths from remaining arguments
+    let supplied_paths = remaining_args
+        .into_iter()
+        .map(|arg| arg.to_string_lossy().to_string())
+        .collect();
+
+    // add the supplied paths to config object
+    config.set_supplied_paths(supplied_paths);
 
     Ok(config)
 }
@@ -207,17 +213,26 @@ fn get_paths_matching_glob(config: &ConfigSettings) -> Result<Vec<String>> {
         require_literal_leading_dot: false,
     };
 
-    let pattern = config
-        .supplied_path
-        .as_ref()
-        .ok_or_else(|| anyhow!("Supplied path is None, but should have been Some"))?;
+    let mut result = Vec::new();
 
-    Ok(glob::glob_with(pattern, glob_settings)?
-        .filter_map(|entry| match entry {
-            Ok(path) if path.is_file() => Some(path.to_string_lossy().into_owned()),
-            _ => None,
-        })
-        .collect())
+    for pattern in &config.supplied_paths {
+        // Try to match the pattern as a glob
+        let glob_matches: Vec<_> = glob::glob_with(pattern, glob_settings.clone())?
+            .filter_map(|entry| match entry {
+                Ok(path) if path.is_file() => Some(path.to_string_lossy().into_owned()),
+                _ => None,
+            })
+            .collect();
+
+        // If the glob matched nothing, check if the pattern itself is a valid file
+        if glob_matches.is_empty() && file_exists(pattern) {
+            result.push(pattern.clone());
+        } else {
+            result.extend(glob_matches);
+        }
+    }
+
+    Ok(result)
 }
 
 /// output all file hashes matching a pattern, directly to stdout. Single-threaded
