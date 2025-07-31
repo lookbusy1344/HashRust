@@ -3,5 +3,18 @@
     "label": "Build project",
     "command": "cargo",
     "args": ["build"]
+  },
+  {
+    "label": "Clippy",
+    "command": "cargo",
+    "args": [
+      "clippy",
+      "--color=always",
+      "--",
+      "-D",
+      "clippy::all",
+      "-D",
+      "clippy::pedantic"
+    ]
   }
 ]
