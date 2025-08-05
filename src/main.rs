@@ -117,7 +117,10 @@ fn show_initial_info(config: &ConfigSettings) {
     if config.supplied_paths.is_empty() {
         eprintln!("No path specified, reading from stdin");
     } else {
-        eprintln!("Paths: {} file path(s) supplied", config.supplied_paths.len());
+        eprintln!(
+            "Paths: {} file path(s) supplied",
+            config.supplied_paths.len()
+        );
     }
 }
 
@@ -217,7 +220,7 @@ fn get_paths_matching_glob(config: &ConfigSettings) -> Result<Vec<String>> {
 
     for pattern in &config.supplied_paths {
         // Try to match the pattern as a glob
-        let glob_matches: Vec<_> = glob::glob_with(pattern, glob_settings.clone())?
+        let glob_matches: Vec<_> = glob::glob_with(pattern, glob_settings)?
             .filter_map(|entry| match entry {
                 Ok(path) if path.is_file() => Some(path.to_string_lossy().into_owned()),
                 _ => None,
