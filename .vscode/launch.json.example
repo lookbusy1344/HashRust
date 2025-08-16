@@ -21,7 +21,7 @@
                 "--single-thread"
             ],
             "cwd": "${workspaceFolder}",
-            "console": "externalTerminal"
+            "terminal": "integrated"
         },
         {
             "name": "Debug with cppvsdbg",
@@ -35,8 +35,6 @@
             ],
             "stopAtEntry": false,
             "cwd": "${workspaceRoot}",
-            "environment": [],
-            "console": "externalTerminal"
         },
         {
             "type": "lldb",
@@ -54,7 +52,8 @@
                 }
             },
             "args": [],
-            "cwd": "${workspaceFolder}"
+            "cwd": "${workspaceFolder}",
+            "terminal": "integrated"
         }
     ]
 }
