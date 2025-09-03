@@ -279,11 +279,11 @@ where
         let file_hash = call_hasher(config.algorithm, config.encoding, pathstr);
 
         match file_hash {
-            Ok(hash) => {
+            Ok(basic_hash) => {
                 if config.exclude_fn {
-                    println!("{}", hash.0);
+                    println!("{basic_hash}");
                 } else {
-                    println!("{} {}", hash.0, pathstr);
+                    println!("{basic_hash} {pathstr}");
                 }
             }
 
