@@ -1,6 +1,3 @@
-// #![allow(unused_imports)]
-// #![allow(dead_code)]
-// #![allow(unused_variables)]
 
 use std::ffi::OsString;
 use std::fmt::Display;
@@ -10,7 +7,6 @@ use std::str::FromStr;
 
 use anyhow::{anyhow, Result};
 
-//use crate::hasher::hash_file_crc32;
 use blake2::{Blake2b512, Blake2s256};
 use md5::Md5;
 use pico_args::Arguments;
@@ -50,10 +46,6 @@ fn main() -> Result<()> {
 fn worker_func() -> Result<()> {
     let mut pargs = Arguments::from_env();
 
-    // diagnostic code to set the parameters
-    //let paramsvec: Vec<std::ffi::OsString> = vec!["--rubbish".into()];
-    //println!("DIAGNOSTIC PARAMETERS SET: {paramsvec:?}");
-    //let mut pargs = pico_args::Arguments::from_vec(paramsvec);
 
     // special handling of help
     if pargs.contains(["-h", "--help"]) {
