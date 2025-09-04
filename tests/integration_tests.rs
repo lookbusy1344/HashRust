@@ -1,6 +1,6 @@
 use std::fs;
-use std::process::Command;
 use std::path::PathBuf;
+use std::process::Command;
 
 #[test]
 fn test_sha3_256_hash() {
@@ -22,7 +22,7 @@ fn test_sha3_256_hash() {
     // Check output
     assert!(output.status.success());
     let stdout = String::from_utf8_lossy(&output.stdout);
-    
+
     // SHA3-256 hash of "Hello, World!" should be consistent
     assert!(stdout.contains("1af17a664e3fa8e419b8ba05c2a173169df76162a5a286e0c405b460d478f7ef"));
     assert!(stdout.contains(test_file.file_name().unwrap().to_str().unwrap()));
@@ -44,7 +44,7 @@ fn test_md5_hash() {
 
     assert!(output.status.success());
     let stdout = String::from_utf8_lossy(&output.stdout);
-    
+
     // MD5 hash of "test"
     assert!(stdout.contains("098f6bcd4621d373cade4e832627b4f6"));
 }
@@ -65,7 +65,7 @@ fn test_crc32_hash() {
 
     assert!(output.status.success());
     let stdout = String::from_utf8_lossy(&output.stdout);
-    
+
     // CRC32 output should be 10-digit zero-padded
     assert!(stdout.contains("3632233996"));
 }
@@ -86,7 +86,7 @@ fn test_exclude_filenames() {
 
     assert!(output.status.success());
     let stdout = String::from_utf8_lossy(&output.stdout);
-    
+
     // Should not contain filename when -x flag is used
     assert!(!stdout.contains(test_file.file_name().unwrap().to_str().unwrap()));
     // But should contain the hash. SHA3-256 hash output is 64 characters, so this ensures a hash is present.
@@ -110,9 +110,11 @@ fn test_base64_encoding() {
 
     assert!(output.status.success());
     let stdout = String::from_utf8_lossy(&output.stdout);
-    
+
     // SHA3-256 of "test" in Base64
-    assert!(stdout.contains("NjNiMDJhNmM4OGY5NGMwYzQ4ODI5MTQ3MTUxZTgyNzE2ZWYxMmY3YTI2YmFmNzg5NjNiYWJhZGY1ZTM4N2FjOA=="));
+    assert!(stdout.contains(
+        "NjNiMDJhNmM4OGY5NGMwYzQ4ODI5MTQ3MTUxZTgyNzE2ZWYxMmY3YTI2YmFmNzg5NjNiYWJhZGY1ZTM4N2FjOA=="
+    ));
 }
 
 // Error condition tests
@@ -120,7 +122,7 @@ fn test_base64_encoding() {
 fn test_nonexistent_file_error() {
     let temp_dir = std::env::temp_dir();
     let nonexistent_file = temp_dir.join("nonexistent_file.txt");
-    
+
     let output = Command::new("cargo")
         .args(&["run", "--", nonexistent_file.to_str().unwrap()])
         .output()
@@ -129,9 +131,11 @@ fn test_nonexistent_file_error() {
     // Should fail with non-zero exit code
     assert!(!output.status.success());
     let stderr = String::from_utf8_lossy(&output.stderr);
-    
+
     // Should contain error message about file not found or access denied
-    assert!(stderr.to_lowercase().contains("error") || stderr.to_lowercase().contains("no such file"));
+    assert!(
+        stderr.to_lowercase().contains("error") || stderr.to_lowercase().contains("no such file")
+    );
 }
 
 #[test]
@@ -142,7 +146,13 @@ fn test_invalid_algorithm_error() {
     fs::write(&test_file, test_content).expect("Failed to write test file");
 
     let output = Command::new("cargo")
-        .args(&["run", "--", "-a", "INVALID_ALGORITHM", test_file.to_str().unwrap()])
+        .args(&[
+            "run",
+            "--",
+            "-a",
+            "INVALID_ALGORITHM",
+            test_file.to_str().unwrap(),
+        ])
         .output()
         .expect("Failed to execute hash_rust");
 
@@ -151,7 +161,7 @@ fn test_invalid_algorithm_error() {
     // Should fail with non-zero exit code
     assert!(!output.status.success());
     let stderr = String::from_utf8_lossy(&output.stderr);
-    
+
     // Should contain error message about invalid algorithm
     assert!(stderr.to_lowercase().contains("error"));
 }
@@ -164,7 +174,13 @@ fn test_invalid_encoding_error() {
     fs::write(&test_file, test_content).expect("Failed to write test file");
 
     let output = Command::new("cargo")
-        .args(&["run", "--", "-e", "INVALID_ENCODING", test_file.to_str().unwrap()])
+        .args(&[
+            "run",
+            "--",
+            "-e",
+            "INVALID_ENCODING",
+            test_file.to_str().unwrap(),
+        ])
         .output()
         .expect("Failed to execute hash_rust");
 
@@ -173,7 +189,7 @@ fn test_invalid_encoding_error() {
     // Should fail with non-zero exit code
     assert!(!output.status.success());
     let stderr = String::from_utf8_lossy(&output.stderr);
-    
+
     // Should contain error message about invalid encoding
     assert!(stderr.to_lowercase().contains("error"));
 }
@@ -187,7 +203,15 @@ fn test_crc32_with_invalid_encoding_error() {
 
     // CRC32 should only work with Hex encoding (U32 format)
     let output = Command::new("cargo")
-        .args(&["run", "--", "-a", "CRC32", "-e", "Base64", test_file.to_str().unwrap()])
+        .args(&[
+            "run",
+            "--",
+            "-a",
+            "CRC32",
+            "-e",
+            "Base64",
+            test_file.to_str().unwrap(),
+        ])
         .output()
         .expect("Failed to execute hash_rust");
 
@@ -196,7 +220,7 @@ fn test_crc32_with_invalid_encoding_error() {
     // Should fail with non-zero exit code
     assert!(!output.status.success());
     let stderr = String::from_utf8_lossy(&output.stderr);
-    
+
     // Should contain error message about incompatible algorithm/encoding combination
     assert!(stderr.to_lowercase().contains("error"));
 }
@@ -227,7 +251,7 @@ fn test_help_flag() {
     // Should succeed and show help
     assert!(output.status.success());
     let stdout = String::from_utf8_lossy(&output.stdout);
-    
+
     // Should contain help information
     assert!(stdout.to_lowercase().contains("usage") || stdout.to_lowercase().contains("help"));
 }

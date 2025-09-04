@@ -8,7 +8,7 @@ use std::io;
 use std::io::BufRead;
 use std::str::FromStr;
 
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 
 //use crate::hasher::hash_file_crc32;
 use blake2::{Blake2b512, Blake2s256};
@@ -24,7 +24,7 @@ use classes::OutputEncoding;
 use hasher::{file_exists, hash_file_encoded};
 
 use crate::classes::{
-    BasicHash, ConfigSettings, HashAlgorithm, DEFAULT_HASH, GIT_VERSION_SHORT, HELP, VERSION,
+    BasicHash, ConfigSettings, DEFAULT_HASH, GIT_VERSION_SHORT, HELP, HashAlgorithm, VERSION,
 };
 
 mod classes;
