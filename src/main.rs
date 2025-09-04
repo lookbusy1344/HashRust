@@ -228,8 +228,17 @@ fn get_paths_matching_glob(config: &ConfigSettings) -> Result<Vec<String>> {
             .collect();
 
         // If the glob matched nothing, check if the pattern itself is a valid file
-        if glob_matches.is_empty() && file_exists(pattern) {
-            result.push(pattern.clone());
+        if glob_matches.is_empty() {
+            if file_exists(pattern) {
+                result.push(pattern.clone());
+            } else {
+                // Check if this looks like a specific file path (not a glob pattern)
+                // If it doesn't contain glob metacharacters, treat it as a missing file error
+                if !pattern.contains(&['*', '?', '[', ']']) {
+                    return Err(anyhow::anyhow!("File not found: {}", pattern));
+                }
+                // Otherwise it's a glob pattern that matched nothing, which is acceptable
+            }
         } else {
             result.extend(glob_matches);
         }

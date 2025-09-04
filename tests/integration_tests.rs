@@ -112,9 +112,7 @@ fn test_base64_encoding() {
     let stdout = String::from_utf8_lossy(&output.stdout);
 
     // SHA3-256 of "test" in Base64
-    assert!(stdout.contains(
-        "NjNiMDJhNmM4OGY5NGMwYzQ4ODI5MTQ3MTUxZTgyNzE2ZWYxMmY3YTI2YmFmNzg5NjNiYWJhZGY1ZTM4N2FjOA=="
-    ));
+    assert!(stdout.contains("NvAoWAuwLMgnKpoCD0IA40bidq5mTkXugHRVdOL1q4A="));
 }
 
 // Error condition tests
