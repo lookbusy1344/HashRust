@@ -8,7 +8,7 @@ use std::io;
 use std::io::BufRead;
 use std::str::FromStr;
 
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 
 //use crate::hasher::hash_file_crc32;
 use blake2::{Blake2b512, Blake2s256};
@@ -24,7 +24,7 @@ use classes::OutputEncoding;
 use hasher::{file_exists, hash_file_encoded};
 
 use crate::classes::{
-    BasicHash, ConfigSettings, HashAlgorithm, DEFAULT_HASH, GIT_VERSION_SHORT, HELP, VERSION,
+    BasicHash, ConfigSettings, DEFAULT_HASH, GIT_VERSION_SHORT, HELP, HashAlgorithm, VERSION,
 };
 
 mod classes;
@@ -228,8 +228,17 @@ fn get_paths_matching_glob(config: &ConfigSettings) -> Result<Vec<String>> {
             .collect();
 
         // If the glob matched nothing, check if the pattern itself is a valid file
-        if glob_matches.is_empty() && file_exists(pattern) {
-            result.push(pattern.clone());
+        if glob_matches.is_empty() {
+            if file_exists(pattern) {
+                result.push(pattern.clone());
+            } else {
+                // Check if this looks like a specific file path (not a glob pattern)
+                // If it doesn't contain glob metacharacters, treat it as a missing file error
+                if !pattern.contains(&['*', '?', '[', ']']) {
+                    return Err(anyhow::anyhow!("File not found: {}", pattern));
+                }
+                // Otherwise it's a glob pattern that matched nothing, which is acceptable
+            }
         } else {
             result.extend(glob_matches);
         }
@@ -279,11 +288,11 @@ where
         let file_hash = call_hasher(config.algorithm, config.encoding, pathstr);
 
         match file_hash {
-            Ok(hash) => {
+            Ok(basic_hash) => {
                 if config.exclude_fn {
-                    println!("{}", hash.0);
+                    println!("{basic_hash}");
                 } else {
-                    println!("{} {}", hash.0, pathstr);
+                    println!("{basic_hash} {pathstr}");
                 }
             }
 
