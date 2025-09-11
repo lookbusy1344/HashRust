@@ -10,7 +10,7 @@ use std::str::FromStr;
 
 use anyhow::{Result, anyhow};
 use indicatif::{ProgressBar, ProgressStyle};
-use std::sync::{Arc, Mutex};
+use std::sync::mpsc;
 use std::time::{Duration, Instant};
 
 //use crate::hasher::hash_file_crc32;
@@ -319,19 +319,22 @@ fn hash_with_progress<S>(config: &ConfigSettings, pathstr: S) -> Result<BasicHas
 where
     S: AsRef<str> + Display + Clone,
 {
-    let start_time = Instant::now();
-    let done = Arc::new(Mutex::new(false));
-    let done_clone = Arc::clone(&done);
     let pathstr_clone = pathstr.clone();
+    
+    // Create a channel to signal completion
+    let (tx, rx) = mpsc::channel();
     
     // Spawn a thread to show progress if operation takes >1 second
     let progress_handle = if !config.debug_mode {
         Some(std::thread::spawn(move || {
-            std::thread::sleep(Duration::from_secs(1));
-            
-            // Check if operation is still running
-            if let Ok(is_done) = done_clone.lock() {
-                if !*is_done {
+            // Wait for either completion signal or 1 second timeout
+            match rx.recv_timeout(Duration::from_secs(1)) {
+                Ok(()) => {
+                    // Operation completed before 1 second, no progress needed
+                    return;
+                }
+                Err(mpsc::RecvTimeoutError::Timeout) => {
+                    // 1 second passed, show progress spinner
                     let pb = ProgressBar::new_spinner();
                     pb.set_style(
                         ProgressStyle::default_spinner()
@@ -341,16 +344,13 @@ where
                     pb.set_message(pathstr_clone.to_string());
                     pb.enable_steady_tick(Duration::from_millis(120));
                     
-                    // Keep spinning until done
-                    loop {
-                        std::thread::sleep(Duration::from_millis(100));
-                        if let Ok(is_done) = done_clone.lock() {
-                            if *is_done {
-                                pb.finish_and_clear();
-                                break;
-                            }
-                        }
-                    }
+                    // Wait for completion signal
+                    let _ = rx.recv();
+                    pb.finish_and_clear();
+                }
+                Err(mpsc::RecvTimeoutError::Disconnected) => {
+                    // Sender dropped, operation completed
+                    return;
                 }
             }
         }))
@@ -361,10 +361,8 @@ where
     // Perform the actual hashing
     let result = call_hasher(config.algorithm, config.encoding, pathstr);
     
-    // Mark as done
-    if let Ok(mut is_done) = done.lock() {
-        *is_done = true;
-    }
+    // Signal completion - this will wake up the progress thread immediately
+    let _ = tx.send(());
     
     // Wait for progress thread to finish
     if let Some(handle) = progress_handle {
