@@ -10,6 +10,8 @@ use std::str::FromStr;
 
 use anyhow::{Result, anyhow};
 use indicatif::{ProgressBar, ProgressStyle};
+use std::sync::{Arc, Mutex};
+use std::time::{Duration, Instant};
 
 //use crate::hasher::hash_file_crc32;
 use blake2::{Blake2b512, Blake2s256};
@@ -258,23 +260,8 @@ where
         eprintln!("Algorithm: {:?}", config.algorithm);
     }
 
-    // Show progress bar for large file operations (10+ files)
-    let progress_bar = if paths.len() >= 10 && !config.debug_mode {
-        let pb = ProgressBar::new(paths.len() as u64);
-        pb.set_style(
-            ProgressStyle::default_bar()
-                .template("[{elapsed_precise}] {bar:40.cyan/blue} {pos:>7}/{len:7} {msg}")
-                .expect("Progress bar template should be valid")
-                .progress_chars("##-"),
-        );
-        pb.set_message("Hashing files...");
-        Some(pb)
-    } else {
-        None
-    };
-
     for pathstr in paths {
-        let file_hash = call_hasher(config.algorithm, config.encoding, pathstr);
+        let file_hash = hash_with_progress(config, pathstr);
 
         match file_hash {
             Ok(basic_hash) => {
@@ -286,14 +273,6 @@ where
             }
             Err(e) => eprintln!("File error for '{}': {}", pathstr, e),
         }
-
-        if let Some(pb) = &progress_bar {
-            pb.inc(1);
-        }
-    }
-
-    if let Some(pb) = progress_bar {
-        pb.finish_with_message("Completed!");
     }
 }
 
@@ -307,24 +286,18 @@ where
         eprintln!("Algorithm: {:?}", config.algorithm);
     }
 
-    // Show progress bar for large file operations (10+ files)
-    let progress_bar = if paths.len() >= 10 && !config.debug_mode {
-        let pb = ProgressBar::new(paths.len() as u64);
-        pb.set_style(
-            ProgressStyle::default_bar()
-                .template("[{elapsed_precise}] {bar:40.cyan/blue} {pos:>7}/{len:7} {msg}")
-                .expect("Progress bar template should be valid")
-                .progress_chars("##-"),
-        );
-        pb.set_message("Hashing files...");
-        Some(pb)
-    } else {
-        None
-    };
-
     // process the paths in parallel
     paths.par_iter().for_each(|pathstr| {
+        // For multithreaded operations, we don't show individual progress spinners
+        // to avoid UI conflicts, but we still time operations for debug output
+        let start_time = Instant::now();
         let file_hash = call_hasher(config.algorithm, config.encoding, pathstr);
+        let elapsed = start_time.elapsed();
+        
+        // If the operation took more than 1 second, mention it in debug mode
+        if config.debug_mode && elapsed >= Duration::from_secs(1) {
+            eprintln!("File '{}' took {:.2}s to hash", pathstr, elapsed.as_secs_f64());
+        }
 
         match file_hash {
             Ok(basic_hash) => {
@@ -338,15 +311,67 @@ where
             // failed to calculate the hash
             Err(e) => eprintln!("File error for '{}': {}", pathstr, e),
         }
-
-        if let Some(pb) = &progress_bar {
-            pb.inc(1);
-        }
     });
+}
 
-    if let Some(pb) = progress_bar {
-        pb.finish_with_message("Completed!");
+/// Hash a file with progress indication for operations taking >1 second
+fn hash_with_progress<S>(config: &ConfigSettings, pathstr: S) -> Result<BasicHash>
+where
+    S: AsRef<str> + Display + Clone,
+{
+    let start_time = Instant::now();
+    let done = Arc::new(Mutex::new(false));
+    let done_clone = Arc::clone(&done);
+    let pathstr_clone = pathstr.clone();
+    
+    // Spawn a thread to show progress if operation takes >1 second
+    let progress_handle = if !config.debug_mode {
+        Some(std::thread::spawn(move || {
+            std::thread::sleep(Duration::from_secs(1));
+            
+            // Check if operation is still running
+            if let Ok(is_done) = done_clone.lock() {
+                if !*is_done {
+                    let pb = ProgressBar::new_spinner();
+                    pb.set_style(
+                        ProgressStyle::default_spinner()
+                            .template("{spinner:.green} Hashing {msg}...")
+                            .expect("Spinner template should be valid")
+                    );
+                    pb.set_message(pathstr_clone.to_string());
+                    pb.enable_steady_tick(Duration::from_millis(120));
+                    
+                    // Keep spinning until done
+                    loop {
+                        std::thread::sleep(Duration::from_millis(100));
+                        if let Ok(is_done) = done_clone.lock() {
+                            if *is_done {
+                                pb.finish_and_clear();
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+        }))
+    } else {
+        None
+    };
+    
+    // Perform the actual hashing
+    let result = call_hasher(config.algorithm, config.encoding, pathstr);
+    
+    // Mark as done
+    if let Ok(mut is_done) = done.lock() {
+        *is_done = true;
     }
+    
+    // Wait for progress thread to finish
+    if let Some(handle) = progress_handle {
+        let _ = handle.join();
+    }
+    
+    result
 }
 
 /// calculate the hash of a file using given algorithm
