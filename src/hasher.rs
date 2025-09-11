@@ -8,6 +8,10 @@ use digest::{Digest, Output};
 
 use crate::classes::{BasicHash, OutputEncoding};
 
+/// Buffer size for reading large files in chunks. 32KB provides optimal performance
+/// by balancing memory usage with I/O efficiency. Larger buffers reduce syscall overhead
+/// but increase memory pressure, while smaller buffers result in more frequent I/O operations.
+/// Files ≤32KB are read entirely into memory for maximum performance.
 const BUFFER_SIZE: usize = 4096 * 8;
 
 /// Hash a file using the given hasher as a Digest implementation, eg `Sha1`, `Sha256`, `Sha3_256`
