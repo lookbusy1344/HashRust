@@ -10,7 +10,7 @@ use std::str::FromStr;
 
 use anyhow::{Result, anyhow};
 use indicatif::{ProgressBar, ProgressStyle};
-use std::sync::mpsc;
+use std::sync::{mpsc, Arc, atomic::{AtomicUsize, Ordering}};
 use std::time::{Duration, Instant};
 
 //use crate::hasher::hash_file_crc32;
@@ -286,16 +286,36 @@ where
         eprintln!("Algorithm: {:?}", config.algorithm);
     }
 
+    // For large file sets, show an overall progress bar instead of per-file spinners
+    let overall_progress = if !config.debug_mode && paths.len() >= 10 {
+        let pb = ProgressBar::new(paths.len() as u64);
+        let style = ProgressStyle::default_bar()
+            .template("{bar:40.cyan/blue} {pos}/{len} files ({percent}%) {msg}")
+            .unwrap_or_else(|_| {
+                ProgressStyle::default_bar()
+                    .template("{bar:40} {pos}/{len} files")
+                    .unwrap_or_else(|_| ProgressStyle::default_bar())
+            });
+        pb.set_style(style);
+        pb.set_message("Processing...");
+        Some(Arc::new(pb))
+    } else {
+        None
+    };
+
     // process the paths in parallel
     paths.par_iter().for_each(|pathstr| {
-        // For multithreaded operations, we don't show individual progress spinners
-        // to avoid UI conflicts, but we still time operations for debug output
         let start_time = Instant::now();
         let file_hash = call_hasher(config.algorithm, config.encoding, pathstr);
         let elapsed = start_time.elapsed();
         
-        // If the operation took more than 1 second, mention it in debug mode
-        if config.debug_mode && elapsed >= Duration::from_secs(1) {
+        // Update overall progress bar if it exists
+        if let Some(ref pb) = overall_progress {
+            pb.inc(1);
+        }
+        
+        // If the operation took more than threshold, mention it in debug mode
+        if config.debug_mode && elapsed >= Duration::from_secs(PROGRESS_THRESHOLD_SECS) {
             eprintln!("File '{}' took {:.2}s to hash", pathstr, elapsed.as_secs_f64());
         }
 
@@ -312,7 +332,17 @@ where
             Err(e) => eprintln!("File error for '{}': {}", pathstr, e),
         }
     });
+    
+    // Finish the overall progress bar if it exists
+    if let Some(pb) = overall_progress {
+        pb.finish_with_message("Complete!");
+    }
 }
+
+// Global counter for active progress threads to prevent resource exhaustion
+static ACTIVE_PROGRESS_THREADS: AtomicUsize = AtomicUsize::new(0);
+const MAX_PROGRESS_THREADS: usize = 4;
+const PROGRESS_THRESHOLD_SECS: u64 = 1;
 
 /// Hash a file with progress indication for operations taking >1 second
 fn hash_with_progress<S>(config: &ConfigSettings, pathstr: S) -> Result<BasicHash>
@@ -324,52 +354,81 @@ where
     // Create a channel to signal completion
     let (tx, rx) = mpsc::channel();
     
-    // Spawn a thread to show progress if operation takes >1 second
-    let progress_handle = if !config.debug_mode {
+    // Only show progress spinners if not in debug mode and we haven't exceeded thread limit
+    let should_show_progress = !config.debug_mode 
+        && ACTIVE_PROGRESS_THREADS.load(Ordering::Relaxed) < MAX_PROGRESS_THREADS;
+    
+    let progress_handle = if should_show_progress {
+        // Increment the counter
+        ACTIVE_PROGRESS_THREADS.fetch_add(1, Ordering::Relaxed);
+        
         Some(std::thread::spawn(move || {
-            // Wait for either completion signal or 1 second timeout
-            match rx.recv_timeout(Duration::from_secs(1)) {
+            // Wait for either completion signal or threshold timeout
+            match rx.recv_timeout(Duration::from_secs(PROGRESS_THRESHOLD_SECS)) {
                 Ok(()) => {
-                    // Operation completed before 1 second, no progress needed
-                    return;
+                    // Operation completed before threshold, no progress needed
                 }
                 Err(mpsc::RecvTimeoutError::Timeout) => {
-                    // 1 second passed, show progress spinner
-                    let pb = ProgressBar::new_spinner();
-                    pb.set_style(
-                        ProgressStyle::default_spinner()
-                            .template("{spinner:.green} Hashing {msg}...")
-                            .expect("Spinner template should be valid")
-                    );
-                    pb.set_message(pathstr_clone.to_string());
-                    pb.enable_steady_tick(Duration::from_millis(120));
-                    
-                    // Wait for completion signal
-                    let _ = rx.recv();
-                    pb.finish_and_clear();
+                    // Threshold passed, show progress spinner
+                    let pb = create_progress_spinner(&pathstr_clone);
+                    if let Some(pb) = pb {
+                        pb.enable_steady_tick(Duration::from_millis(120));
+                        
+                        // Wait for completion signal
+                        let _ = rx.recv();
+                        pb.finish_and_clear();
+                    }
                 }
                 Err(mpsc::RecvTimeoutError::Disconnected) => {
                     // Sender dropped, operation completed
-                    return;
                 }
             }
+            
+            // Decrement the counter when thread finishes
+            ACTIVE_PROGRESS_THREADS.fetch_sub(1, Ordering::Relaxed);
         }))
     } else {
         None
     };
     
     // Perform the actual hashing
+    let start_time = Instant::now();
     let result = call_hasher(config.algorithm, config.encoding, pathstr);
+    let elapsed = start_time.elapsed();
     
     // Signal completion - this will wake up the progress thread immediately
     let _ = tx.send(());
     
-    // Wait for progress thread to finish
+    // Wait for progress thread to finish with timeout to prevent hanging
     if let Some(handle) = progress_handle {
         let _ = handle.join();
     }
     
+    // Log timing info in debug mode for long operations
+    if config.debug_mode && elapsed >= Duration::from_secs(PROGRESS_THRESHOLD_SECS) {
+        eprintln!("File '{}' took {:.2}s to hash", pathstr_clone, elapsed.as_secs_f64());
+    }
+    
     result
+}
+
+/// Create a progress spinner with safe error handling
+fn create_progress_spinner(pathstr: &str) -> Option<ProgressBar> {
+    let pb = ProgressBar::new_spinner();
+    
+    // Use unwrap_or_else to provide fallback template if parsing fails
+    let style = ProgressStyle::default_spinner()
+        .template("{spinner:.green} Hashing {msg}...")
+        .unwrap_or_else(|_| {
+            // Fallback to simpler template if the main one fails
+            ProgressStyle::default_spinner()
+                .template("{spinner} Hashing...")
+                .unwrap_or_else(|_| ProgressStyle::default_spinner())
+        });
+    
+    pb.set_style(style);
+    pb.set_message(pathstr.to_string());
+    Some(pb)
 }
 
 /// calculate the hash of a file using given algorithm
