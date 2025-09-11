@@ -9,6 +9,7 @@ use std::io::BufRead;
 use std::str::FromStr;
 
 use anyhow::{Result, anyhow};
+use indicatif::{ProgressBar, ProgressStyle};
 
 //use crate::hasher::hash_file_crc32;
 use blake2::{Blake2b512, Blake2s256};
@@ -257,6 +258,21 @@ where
         eprintln!("Algorithm: {:?}", config.algorithm);
     }
 
+    // Show progress bar for large file operations (10+ files)
+    let progress_bar = if paths.len() >= 10 && !config.debug_mode {
+        let pb = ProgressBar::new(paths.len() as u64);
+        pb.set_style(
+            ProgressStyle::default_bar()
+                .template("[{elapsed_precise}] {bar:40.cyan/blue} {pos:>7}/{len:7} {msg}")
+                .expect("Progress bar template should be valid")
+                .progress_chars("##-"),
+        );
+        pb.set_message("Hashing files...");
+        Some(pb)
+    } else {
+        None
+    };
+
     for pathstr in paths {
         let file_hash = call_hasher(config.algorithm, config.encoding, pathstr);
 
@@ -268,8 +284,16 @@ where
                     println!("{basic_hash} {pathstr}");
                 }
             }
-            Err(e) => eprintln!("'{pathstr}' file err {e:?}"),
+            Err(e) => eprintln!("File error for '{}': {}", pathstr, e),
         }
+
+        if let Some(pb) = &progress_bar {
+            pb.inc(1);
+        }
+    }
+
+    if let Some(pb) = progress_bar {
+        pb.finish_with_message("Completed!");
     }
 }
 
@@ -282,6 +306,21 @@ where
         eprintln!("Multi-threaded mode");
         eprintln!("Algorithm: {:?}", config.algorithm);
     }
+
+    // Show progress bar for large file operations (10+ files)
+    let progress_bar = if paths.len() >= 10 && !config.debug_mode {
+        let pb = ProgressBar::new(paths.len() as u64);
+        pb.set_style(
+            ProgressStyle::default_bar()
+                .template("[{elapsed_precise}] {bar:40.cyan/blue} {pos:>7}/{len:7} {msg}")
+                .expect("Progress bar template should be valid")
+                .progress_chars("##-"),
+        );
+        pb.set_message("Hashing files...");
+        Some(pb)
+    } else {
+        None
+    };
 
     // process the paths in parallel
     paths.par_iter().for_each(|pathstr| {
@@ -297,9 +336,17 @@ where
             }
 
             // failed to calculate the hash
-            Err(e) => eprintln!("'{pathstr}' file err {e:?}"),
+            Err(e) => eprintln!("File error for '{}': {}", pathstr, e),
+        }
+
+        if let Some(pb) = &progress_bar {
+            pb.inc(1);
         }
     });
+
+    if let Some(pb) = progress_bar {
+        pb.finish_with_message("Completed!");
+    }
 }
 
 /// calculate the hash of a file using given algorithm
@@ -312,7 +359,9 @@ fn call_hasher(
     if (algo == HashAlgorithm::CRC32 && encoding != OutputEncoding::U32)
         || (algo != HashAlgorithm::CRC32 && encoding == OutputEncoding::U32)
     {
-        return Err(anyhow!("CRC32 can only be output as U32"));
+        return Err(anyhow!(
+            "CRC32 must use U32 encoding, and U32 encoding can only be used with CRC32"
+        ));
     }
 
     match algo {
