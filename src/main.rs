@@ -301,24 +301,11 @@ where
 
     // process the paths in parallel
     paths.par_iter().for_each(|pathstr| {
-        let start_time = Instant::now();
-        let file_hash = call_hasher(config.algorithm, config.encoding, pathstr);
-        let elapsed = start_time.elapsed();
+        let file_hash = hash_with_progress(config, pathstr.as_ref().to_string());
 
         // Update overall progress bar if it exists
         if let Some(ref pb) = overall_progress {
             pb.inc(1);
-        }
-
-        // If the operation took more than threshold, mention it in debug mode
-        if config.debug_mode
-            && elapsed >= Duration::from_millis(ProgressManager::threshold_millis())
-        {
-            eprintln!(
-                "File '{}' took {:.2}s to hash",
-                pathstr,
-                elapsed.as_secs_f64()
-            );
         }
 
         match file_hash {
