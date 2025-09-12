@@ -74,4 +74,6 @@ HashRust is a CLI file hashing utility written in Rust that supports multiple ha
 
 ## Development Workflow
 
-**IMPORTANT: Always run `cargo fmt` after making any code changes to ensure consistent formatting.**
+**IMPORTANT: After making code changes:**
+1. Always run `cargo fmt` to ensure consistent formatting
+2. Run `cargo clippy --color=always -- -D clippy::all -D clippy::pedantic` to catch potential issues and ensure code quality
