@@ -237,7 +237,7 @@ fn get_paths_matching_glob(config: &ConfigSettings) -> Result<Vec<String>> {
             } else {
                 // Check if this looks like a specific file path (not a glob pattern)
                 // If it doesn't contain glob metacharacters, treat it as a missing file error
-                if !pattern.contains(&['*', '?', '[', ']']) {
+                if !pattern.contains(['*', '?', '[', ']']) {
                     return Err(anyhow::anyhow!("File not found: {}", pattern));
                 }
                 // Otherwise it's a glob pattern that matched nothing, which is acceptable
@@ -271,7 +271,7 @@ where
                     println!("{basic_hash} {pathstr}");
                 }
             }
-            Err(e) => eprintln!("File error for '{}': {}", pathstr, e),
+            Err(e) => eprintln!("File error for '{pathstr}': {e}"),
         }
     }
 }
@@ -319,7 +319,7 @@ where
             }
 
             // failed to calculate the hash
-            Err(e) => eprintln!("File error for '{}': {}", pathstr, e),
+            Err(e) => eprintln!("File error for '{pathstr}': {e}"),
         }
     });
 

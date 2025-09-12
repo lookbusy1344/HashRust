@@ -33,10 +33,11 @@ impl ProgressHandle {
         }
 
         // Wait for progress thread to finish - simple cleanup
-        if let Some(handle) = self.thread_handle.take() {
-            if handle.join().is_err() && debug_mode {
-                eprintln!("Progress thread join failed");
-            }
+        if let Some(handle) = self.thread_handle.take()
+            && handle.join().is_err()
+            && debug_mode
+        {
+            eprintln!("Progress thread join failed");
         }
     }
 }
@@ -68,22 +69,17 @@ impl ProgressManager {
         let handle = std::thread::spawn(move || {
             // Wait for either completion signal or threshold timeout
             match rx.recv_timeout(Duration::from_secs(PROGRESS_THRESHOLD_SECS)) {
-                Ok(()) => {
-                    // Operation completed before threshold, no progress needed
-                }
                 Err(mpsc::RecvTimeoutError::Timeout) => {
                     // Threshold passed, show progress spinner
                     let pb = Self::create_progress_spinner(pathstr.as_ref());
-                    if let Some(pb) = pb {
-                        pb.enable_steady_tick(Duration::from_millis(120));
+                    pb.enable_steady_tick(Duration::from_millis(120));
 
-                        // Wait for completion signal
-                        let _ = rx.recv();
-                        pb.finish_and_clear();
-                    }
+                    // Wait for completion signal
+                    let _ = rx.recv();
+                    pb.finish_and_clear();
                 }
-                Err(mpsc::RecvTimeoutError::Disconnected) => {
-                    // Sender dropped, operation completed
+                Ok(()) | Err(mpsc::RecvTimeoutError::Disconnected) => {
+                    // Operation completed before threshold or sender dropped
                 }
             }
 
@@ -121,7 +117,7 @@ impl ProgressManager {
     }
 
     /// Create a progress spinner with safe error handling
-    fn create_progress_spinner(pathstr: &str) -> Option<ProgressBar> {
+    fn create_progress_spinner(pathstr: &str) -> ProgressBar {
         let pb = ProgressBar::new_spinner();
 
         // Use unwrap_or_else to provide fallback template if parsing fails
@@ -136,7 +132,7 @@ impl ProgressManager {
 
         pb.set_style(style);
         pb.set_message(pathstr.to_string());
-        Some(pb)
+        pb
     }
 
     /// Get the progress threshold in seconds
