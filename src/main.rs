@@ -311,7 +311,9 @@ where
         }
 
         // If the operation took more than threshold, mention it in debug mode
-        if config.debug_mode && elapsed >= Duration::from_secs(ProgressManager::threshold_secs()) {
+        if config.debug_mode
+            && elapsed >= Duration::from_millis(ProgressManager::threshold_millis())
+        {
             eprintln!(
                 "File '{}' took {:.2}s to hash",
                 pathstr,
@@ -361,7 +363,7 @@ where
     }
 
     // Log timing info in debug mode for long operations
-    if config.debug_mode && elapsed >= Duration::from_secs(ProgressManager::threshold_secs()) {
+    if config.debug_mode && elapsed >= Duration::from_millis(ProgressManager::threshold_millis()) {
         eprintln!(
             "File '{}' took {:.2}s to hash",
             pathstr_clone,

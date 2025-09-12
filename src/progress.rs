@@ -16,7 +16,7 @@ use std::time::Duration;
 // Global counter for active progress threads to prevent resource exhaustion
 static ACTIVE_PROGRESS_THREADS: AtomicUsize = AtomicUsize::new(0);
 const MAX_PROGRESS_THREADS: usize = 4;
-const PROGRESS_THRESHOLD_SECS: u64 = 1;
+const PROGRESS_THRESHOLD_MILLIS: u64 = 200;
 
 /// Handle for a progress indication session
 pub struct ProgressHandle {
@@ -48,13 +48,13 @@ pub struct ProgressManager;
 impl ProgressManager {
     /// Create a progress indication for a single file operation
     /// Shows a spinner if the operation takes longer than the threshold
-    pub fn create_file_progress<S>(pathstr: S, debug_mode: bool) -> Option<ProgressHandle>
+    pub fn create_file_progress<S>(pathstr: S, _debug_mode: bool) -> Option<ProgressHandle>
     where
         S: AsRef<str> + Display + Clone + Send + 'static,
     {
-        // Only show progress spinners if not in debug mode and we haven't exceeded thread limit
+        // Only show progress spinners if we haven't exceeded thread limit
         let should_show_progress =
-            !debug_mode && ACTIVE_PROGRESS_THREADS.load(Ordering::Relaxed) < MAX_PROGRESS_THREADS;
+            ACTIVE_PROGRESS_THREADS.load(Ordering::Relaxed) < MAX_PROGRESS_THREADS;
 
         if !should_show_progress {
             return None;
@@ -68,7 +68,7 @@ impl ProgressManager {
 
         let handle = std::thread::spawn(move || {
             // Wait for either completion signal or threshold timeout
-            match rx.recv_timeout(Duration::from_secs(PROGRESS_THRESHOLD_SECS)) {
+            match rx.recv_timeout(Duration::from_millis(PROGRESS_THRESHOLD_MILLIS)) {
                 Err(mpsc::RecvTimeoutError::Timeout) => {
                     // Threshold passed, show progress spinner
                     let pb = Self::create_progress_spinner(pathstr.as_ref());
@@ -96,10 +96,10 @@ impl ProgressManager {
     /// Create an overall progress bar for multiple file operations
     pub fn create_overall_progress(
         file_count: usize,
-        debug_mode: bool,
+        _debug_mode: bool,
     ) -> Option<Arc<ProgressBar>> {
         // For large file sets, show an overall progress bar instead of per-file spinners
-        if debug_mode || file_count < 10 {
+        if file_count < 10 {
             return None;
         }
 
@@ -135,8 +135,8 @@ impl ProgressManager {
         pb
     }
 
-    /// Get the progress threshold in seconds
-    pub fn threshold_secs() -> u64 {
-        PROGRESS_THRESHOLD_SECS
+    /// Get the progress threshold in milliseconds
+    pub fn threshold_millis() -> u64 {
+        PROGRESS_THRESHOLD_MILLIS
     }
 }
