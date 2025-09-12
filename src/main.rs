@@ -401,7 +401,35 @@ where
     
     // Wait for progress thread to finish with timeout to prevent hanging
     if let Some(handle) = progress_handle {
-        let _ = handle.join();
+        // Use a separate thread to implement timeout for join()
+        let timeout_result = std::thread::scope(|s| {
+            let join_handle = s.spawn(|| handle.join());
+            
+            // Wait for either the join to complete or timeout
+            let timeout_duration = Duration::from_secs(2); // 2 second timeout
+            std::thread::sleep(Duration::from_millis(10)); // Small delay to let join attempt start
+            
+            // Check periodically if join completed
+            let start = Instant::now();
+            while start.elapsed() < timeout_duration {
+                if join_handle.is_finished() {
+                    return join_handle.join().unwrap();
+                }
+                std::thread::sleep(Duration::from_millis(50));
+            }
+            
+            // Timeout occurred - the progress thread is likely stuck
+            eprintln!("Warning: Progress thread cleanup timed out after {}s", 
+                     timeout_duration.as_secs());
+            Err("Timeout waiting for progress thread to finish")
+        });
+        
+        // Log any join errors (but don't fail the operation)
+        if let Err(e) = timeout_result {
+            if config.debug_mode {
+                eprintln!("Progress thread join issue: {:?}", e);
+            }
+        }
     }
     
     // Log timing info in debug mode for long operations
