@@ -7,9 +7,9 @@
 use indicatif::{ProgressBar, ProgressStyle};
 use std::fmt::Display;
 use std::sync::{
-    Arc,
     atomic::{AtomicUsize, Ordering},
     mpsc,
+    Arc,
 };
 use std::time::Duration;
 
@@ -72,9 +72,10 @@ impl ProgressManager {
                 Err(mpsc::RecvTimeoutError::Timeout) => {
                     // Threshold passed, show progress spinner
                     let pb = Self::create_progress_spinner(pathstr.as_ref());
-                    pb.enable_steady_tick(Duration::from_millis(120));
 
-                    // Wait for completion signal
+                    // reduce visual noise when multiple spinners are active
+                    pb.enable_steady_tick(Duration::from_millis(350));
+
                     let _ = rx.recv();
                     pb.finish_and_clear();
                 }
