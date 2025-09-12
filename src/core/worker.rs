@@ -1,4 +1,5 @@
 use std::fmt::Display;
+use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
 use anyhow::Result;
@@ -9,6 +10,8 @@ use crate::core::types::BasicHash;
 use crate::hash::algorithms::call_hasher;
 use crate::io::files::get_required_filenames;
 use crate::progress::ProgressManager;
+
+const MESSAGE_UPDATE_THROTTLE_MILLIS: u64 = 300;
 
 pub fn worker_func(config: &ConfigSettings) -> Result<()> {
     if config.debug_mode {
@@ -61,7 +64,7 @@ where
     }
 
     for pathstr in paths {
-        let file_hash = hash_with_progress(config, pathstr.as_ref().to_string());
+        let file_hash = hash_with_progress(config, pathstr.as_ref().to_string(), false);
 
         match file_hash {
             Ok(basic_hash) => {
@@ -91,8 +94,27 @@ where
         ProgressManager::create_overall_progress(paths.len(), config.debug_mode)
     };
 
+    // Create rate-limiting tracker for message updates
+    let last_message_update = Arc::new(Mutex::new(Instant::now()));
+
     paths.par_iter().for_each(|pathstr| {
-        let file_hash = hash_with_progress(config, pathstr.as_ref().to_string());
+        // Update the progress message with current file (rate limited)
+        if let Some(ref pb) = overall_progress {
+            let now = Instant::now();
+            if let Ok(mut last_update) = last_message_update.try_lock()
+                && now.duration_since(*last_update).as_millis()
+                    >= u128::from(MESSAGE_UPDATE_THROTTLE_MILLIS)
+            {
+                pb.set_message(format!("Processing {}", pathstr.as_ref()));
+                *last_update = now;
+            }
+        }
+
+        let file_hash = hash_with_progress(
+            config,
+            pathstr.as_ref().to_string(),
+            overall_progress.is_some(),
+        );
 
         if let Some(ref pb) = overall_progress {
             pb.inc(1);
@@ -116,13 +138,18 @@ where
     }
 }
 
-fn hash_with_progress<S>(config: &ConfigSettings, pathstr: S) -> Result<BasicHash>
+fn hash_with_progress<S>(
+    config: &ConfigSettings,
+    pathstr: S,
+    has_overall_progress: bool,
+) -> Result<BasicHash>
 where
     S: AsRef<str> + Display + Clone + Send + 'static,
 {
     let pathstr_clone = pathstr.clone();
 
-    let progress_handle = if config.no_progress {
+    // Don't show individual file progress if we have an overall progress bar or progress is disabled
+    let progress_handle = if config.no_progress || has_overall_progress {
         None
     } else {
         ProgressManager::create_file_progress(pathstr_clone.clone(), config.debug_mode)
