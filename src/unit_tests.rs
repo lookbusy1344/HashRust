@@ -83,6 +83,7 @@ fn test_config_settings_new() {
         false, // exclude_fn
         false, // single_thread
         true,  // case_sensitive
+        false, // no_progress
         HashAlgorithm::SHA3_256,
         OutputEncoding::Hex,
         Some(100),
@@ -104,6 +105,7 @@ fn test_config_settings_set_paths() {
         false,
         false,
         false,
+        false, // no_progress
         HashAlgorithm::MD5,
         OutputEncoding::Base64,
         None,

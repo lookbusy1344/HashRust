@@ -75,6 +75,7 @@ pub struct ConfigSettings {
     pub exclude_fn: bool,
     pub single_thread: bool,
     pub case_sensitive: bool,
+    pub no_progress: bool,
     pub algorithm: HashAlgorithm,
     pub encoding: OutputEncoding,
     pub limit_num: Option<usize>,
@@ -83,12 +84,14 @@ pub struct ConfigSettings {
 
 impl ConfigSettings {
     #[allow(clippy::fn_params_excessive_bools)]
+    #[allow(clippy::too_many_arguments)]
     /// Create a new `ConfigSettings` object
     pub fn new(
         debug_mode: bool,
         exclude_fn: bool,
         single_thread: bool,
         case_sensitive: bool,
+        no_progress: bool,
         algorithm: HashAlgorithm,
         encoding: OutputEncoding,
         limit_num: Option<usize>,
@@ -98,6 +101,7 @@ impl ConfigSettings {
             exclude_fn,
             single_thread,
             case_sensitive,
+            no_progress,
             algorithm,
             encoding,
             limit_num,
@@ -119,6 +123,7 @@ FLAGS:
     -c, --case-sensitive         Case-sensitive glob matching
     -x, --exclude-filenames      Exclude filenames from output
     -s, --single-thread          Single-threaded (not multi-threaded)
+    -n, --no-progress            Suppress progress display (for scripts)
 OPTIONS:
     -a, --algorithm [algorithm]  Hash algorithm to use
     -e, --encoding [encoding]    Output encoding (Hex, Base64, Base32. Default is Hex)

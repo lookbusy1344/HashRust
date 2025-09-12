@@ -161,6 +161,7 @@ fn process_command_line(mut pargs: Arguments) -> Result<ConfigSettings> {
         pargs.contains(["-x", "--exclude-filenames"]),
         pargs.contains(["-s", "--single-thread"]),
         pargs.contains(["-c", "--case-sensitive"]),
+        pargs.contains(["-n", "--no-progress"]),
         algo,
         encoding,
         pargs.opt_value_from_str(["-l", "--limit"])?,
@@ -297,7 +298,11 @@ where
     }
 
     // For large file sets, show an overall progress bar instead of per-file spinners
-    let overall_progress = ProgressManager::create_overall_progress(paths.len(), config.debug_mode);
+    let overall_progress = if config.no_progress {
+        None
+    } else {
+        ProgressManager::create_overall_progress(paths.len(), config.debug_mode)
+    };
 
     // process the paths in parallel
     paths.par_iter().for_each(|pathstr| {
@@ -336,8 +341,11 @@ where
     let pathstr_clone = pathstr.clone();
 
     // Create progress indication handle
-    let progress_handle =
-        ProgressManager::create_file_progress(pathstr_clone.clone(), config.debug_mode);
+    let progress_handle = if config.no_progress {
+        None
+    } else {
+        ProgressManager::create_file_progress(pathstr_clone.clone(), config.debug_mode)
+    };
 
     // Perform the actual hashing
     let start_time = Instant::now();
