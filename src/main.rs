@@ -9,6 +9,7 @@ use std::io::BufRead;
 use std::str::FromStr;
 
 use anyhow::{Result, anyhow};
+use std::time::{Duration, Instant};
 
 //use crate::hasher::hash_file_crc32;
 use blake2::{Blake2b512, Blake2s256};
@@ -22,6 +23,7 @@ use whirlpool::Whirlpool;
 
 use classes::OutputEncoding;
 use hasher::{file_exists, hash_file_encoded};
+use progress::ProgressManager;
 
 use crate::classes::{
     BasicHash, ConfigSettings, DEFAULT_HASH, GIT_VERSION_SHORT, HELP, HashAlgorithm, VERSION,
@@ -30,6 +32,7 @@ use crate::classes::{
 mod classes;
 mod crc32;
 mod hasher;
+mod progress;
 mod unit_tests;
 
 /// Call the inner worker function, and show help if there is an error
@@ -250,7 +253,7 @@ fn get_paths_matching_glob(config: &ConfigSettings) -> Result<Vec<String>> {
 /// output all file hashes matching a pattern, directly to stdout. Single-threaded
 fn file_hashes_st<S>(config: &ConfigSettings, paths: &[S])
 where
-    S: AsRef<str> + Display,
+    S: AsRef<str> + Display + Send + Sync,
 {
     if config.debug_mode {
         eprintln!("Single-threaded mode");
@@ -258,7 +261,7 @@ where
     }
 
     for pathstr in paths {
-        let file_hash = call_hasher(config.algorithm, config.encoding, pathstr);
+        let file_hash = hash_with_progress(config, pathstr.as_ref().to_string());
 
         match file_hash {
             Ok(basic_hash) => {
@@ -268,7 +271,7 @@ where
                     println!("{basic_hash} {pathstr}");
                 }
             }
-            Err(e) => eprintln!("'{pathstr}' file err {e:?}"),
+            Err(e) => eprintln!("File error for '{}': {}", pathstr, e),
         }
     }
 }
@@ -283,9 +286,28 @@ where
         eprintln!("Algorithm: {:?}", config.algorithm);
     }
 
+    // For large file sets, show an overall progress bar instead of per-file spinners
+    let overall_progress = ProgressManager::create_overall_progress(paths.len(), config.debug_mode);
+
     // process the paths in parallel
     paths.par_iter().for_each(|pathstr| {
+        let start_time = Instant::now();
         let file_hash = call_hasher(config.algorithm, config.encoding, pathstr);
+        let elapsed = start_time.elapsed();
+
+        // Update overall progress bar if it exists
+        if let Some(ref pb) = overall_progress {
+            pb.inc(1);
+        }
+
+        // If the operation took more than threshold, mention it in debug mode
+        if config.debug_mode && elapsed >= Duration::from_secs(ProgressManager::threshold_secs()) {
+            eprintln!(
+                "File '{}' took {:.2}s to hash",
+                pathstr,
+                elapsed.as_secs_f64()
+            );
+        }
 
         match file_hash {
             Ok(basic_hash) => {
@@ -297,9 +319,47 @@ where
             }
 
             // failed to calculate the hash
-            Err(e) => eprintln!("'{pathstr}' file err {e:?}"),
+            Err(e) => eprintln!("File error for '{}': {}", pathstr, e),
         }
     });
+
+    // Finish the overall progress bar if it exists
+    if let Some(pb) = overall_progress {
+        pb.finish_with_message("Complete!");
+    }
+}
+
+/// Hash a file with progress indication for operations taking >1 second
+fn hash_with_progress<S>(config: &ConfigSettings, pathstr: S) -> Result<BasicHash>
+where
+    S: AsRef<str> + Display + Clone + Send + 'static,
+{
+    let pathstr_clone = pathstr.clone();
+
+    // Create progress indication handle
+    let progress_handle =
+        ProgressManager::create_file_progress(pathstr_clone.clone(), config.debug_mode);
+
+    // Perform the actual hashing
+    let start_time = Instant::now();
+    let result = call_hasher(config.algorithm, config.encoding, pathstr);
+    let elapsed = start_time.elapsed();
+
+    // Signal completion and clean up progress resources
+    if let Some(handle) = progress_handle {
+        handle.finish(config.debug_mode);
+    }
+
+    // Log timing info in debug mode for long operations
+    if config.debug_mode && elapsed >= Duration::from_secs(ProgressManager::threshold_secs()) {
+        eprintln!(
+            "File '{}' took {:.2}s to hash",
+            pathstr_clone,
+            elapsed.as_secs_f64()
+        );
+    }
+
+    result
 }
 
 /// calculate the hash of a file using given algorithm
@@ -312,7 +372,9 @@ fn call_hasher(
     if (algo == HashAlgorithm::CRC32 && encoding != OutputEncoding::U32)
         || (algo != HashAlgorithm::CRC32 && encoding == OutputEncoding::U32)
     {
-        return Err(anyhow!("CRC32 can only be output as U32"));
+        return Err(anyhow!(
+            "CRC32 must use U32 encoding, and U32 encoding can only be used with CRC32"
+        ));
     }
 
     match algo {
