@@ -64,7 +64,7 @@ where
     }
 
     for pathstr in paths {
-        let file_hash = hash_with_progress(config, pathstr.as_ref().to_string());
+        let file_hash = hash_with_progress(config, pathstr.as_ref().to_string(), false);
 
         match file_hash {
             Ok(basic_hash) => {
@@ -110,7 +110,11 @@ where
             }
         }
 
-        let file_hash = hash_with_progress(config, pathstr.as_ref().to_string());
+        let file_hash = hash_with_progress(
+            config,
+            pathstr.as_ref().to_string(),
+            overall_progress.is_some(),
+        );
 
         if let Some(ref pb) = overall_progress {
             pb.inc(1);
@@ -134,15 +138,18 @@ where
     }
 }
 
-fn hash_with_progress<S>(config: &ConfigSettings, pathstr: S) -> Result<BasicHash>
+fn hash_with_progress<S>(
+    config: &ConfigSettings,
+    pathstr: S,
+    has_overall_progress: bool,
+) -> Result<BasicHash>
 where
     S: AsRef<str> + Display + Clone + Send + 'static,
 {
     let pathstr_clone = pathstr.clone();
 
-    // Show individual file progress unless progress is completely disabled
-    // When there's an overall progress bar, individual spinners will still show for long operations
-    let progress_handle = if config.no_progress {
+    // Don't show individual file progress if we have an overall progress bar or progress is disabled
+    let progress_handle = if config.no_progress || has_overall_progress {
         None
     } else {
         ProgressManager::create_file_progress(pathstr_clone.clone(), config.debug_mode)
