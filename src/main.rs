@@ -9,8 +9,6 @@ use std::io::BufRead;
 use std::str::FromStr;
 
 use anyhow::{Result, anyhow};
-use indicatif::{ProgressBar, ProgressStyle};
-use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 //use crate::hasher::hash_file_crc32;
@@ -255,7 +253,7 @@ fn get_paths_matching_glob(config: &ConfigSettings) -> Result<Vec<String>> {
 /// output all file hashes matching a pattern, directly to stdout. Single-threaded
 fn file_hashes_st<S>(config: &ConfigSettings, paths: &[S])
 where
-    S: AsRef<str> + Display,
+    S: AsRef<str> + Display + Send + Sync,
 {
     if config.debug_mode {
         eprintln!("Single-threaded mode");
@@ -263,7 +261,7 @@ where
     }
 
     for pathstr in paths {
-        let file_hash = hash_with_progress(config, pathstr);
+        let file_hash = hash_with_progress(config, pathstr.as_ref().to_string());
 
         match file_hash {
             Ok(basic_hash) => {
@@ -296,15 +294,19 @@ where
         let start_time = Instant::now();
         let file_hash = call_hasher(config.algorithm, config.encoding, pathstr);
         let elapsed = start_time.elapsed();
-        
+
         // Update overall progress bar if it exists
         if let Some(ref pb) = overall_progress {
             pb.inc(1);
         }
-        
+
         // If the operation took more than threshold, mention it in debug mode
         if config.debug_mode && elapsed >= Duration::from_secs(ProgressManager::threshold_secs()) {
-            eprintln!("File '{}' took {:.2}s to hash", pathstr, elapsed.as_secs_f64());
+            eprintln!(
+                "File '{}' took {:.2}s to hash",
+                pathstr,
+                elapsed.as_secs_f64()
+            );
         }
 
         match file_hash {
@@ -320,7 +322,7 @@ where
             Err(e) => eprintln!("File error for '{}': {}", pathstr, e),
         }
     });
-    
+
     // Finish the overall progress bar if it exists
     if let Some(pb) = overall_progress {
         pb.finish_with_message("Complete!");
@@ -333,25 +335,30 @@ where
     S: AsRef<str> + Display + Clone + Send + 'static,
 {
     let pathstr_clone = pathstr.clone();
-    
+
     // Create progress indication handle
-    let progress_handle = ProgressManager::create_file_progress(pathstr_clone.clone(), config.debug_mode);
-    
+    let progress_handle =
+        ProgressManager::create_file_progress(pathstr_clone.clone(), config.debug_mode);
+
     // Perform the actual hashing
     let start_time = Instant::now();
     let result = call_hasher(config.algorithm, config.encoding, pathstr);
     let elapsed = start_time.elapsed();
-    
+
     // Signal completion and clean up progress resources
     if let Some(handle) = progress_handle {
         handle.finish(config.debug_mode);
     }
-    
+
     // Log timing info in debug mode for long operations
     if config.debug_mode && elapsed >= Duration::from_secs(ProgressManager::threshold_secs()) {
-        eprintln!("File '{}' took {:.2}s to hash", pathstr_clone, elapsed.as_secs_f64());
+        eprintln!(
+            "File '{}' took {:.2}s to hash",
+            pathstr_clone,
+            elapsed.as_secs_f64()
+        );
     }
-    
+
     result
 }
 

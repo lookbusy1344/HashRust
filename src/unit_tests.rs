@@ -1,6 +1,5 @@
 #[cfg(test)]
 use super::*;
-use std::str::FromStr;
 
 #[test]
 fn test_parse_hash_algorithm_valid() {
