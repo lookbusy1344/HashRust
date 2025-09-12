@@ -10,12 +10,12 @@ use crate::hash::algorithms::call_hasher;
 use crate::io::files::get_required_filenames;
 use crate::progress::ProgressManager;
 
-pub fn worker_func(config: ConfigSettings) -> Result<()> {
+pub fn worker_func(config: &ConfigSettings) -> Result<()> {
     if config.debug_mode {
-        show_initial_info(&config);
+        show_initial_info(config);
     }
 
-    let paths = get_required_filenames(&config)?;
+    let paths = get_required_filenames(config)?;
 
     if paths.is_empty() {
         if config.debug_mode {
@@ -29,9 +29,9 @@ pub fn worker_func(config: ConfigSettings) -> Result<()> {
     }
 
     if config.single_thread || paths.len() == 1 {
-        file_hashes_st(&config, &paths);
+        file_hashes_st(config, &paths);
     } else {
-        file_hashes_mt(&config, &paths);
+        file_hashes_mt(config, &paths);
     }
 
     Ok(())

@@ -5,7 +5,7 @@ use anyhow::{Result, anyhow};
 use pico_args::Arguments;
 
 use crate::cli::config::{ConfigSettings, HELP};
-use crate::core::types::{HashAlgorithm, OutputEncoding, DEFAULT_HASH, VERSION, GIT_VERSION_SHORT};
+use crate::core::types::{DEFAULT_HASH, GIT_VERSION_SHORT, HashAlgorithm, OutputEncoding, VERSION};
 
 pub fn process_command_line(mut pargs: Arguments) -> Result<ConfigSettings> {
     let algo_str: Option<String> = pargs.opt_value_from_str(["-a", "--algorithm"])?;
@@ -54,14 +54,14 @@ pub fn process_command_line(mut pargs: Arguments) -> Result<ConfigSettings> {
     Ok(config)
 }
 
-fn parse_hash_algorithm(algorithm: Option<&str>) -> Result<HashAlgorithm, strum::ParseError> {
+pub fn parse_hash_algorithm(algorithm: Option<&str>) -> Result<HashAlgorithm, strum::ParseError> {
     match algorithm {
         Some(algo_str) if !algo_str.is_empty() => HashAlgorithm::from_str(algo_str),
         _ => Ok(DEFAULT_HASH),
     }
 }
 
-fn parse_hash_encoding(encoding: Option<&str>) -> Result<OutputEncoding, strum::ParseError> {
+pub fn parse_hash_encoding(encoding: Option<&str>) -> Result<OutputEncoding, strum::ParseError> {
     match encoding {
         Some(enc_str) if !enc_str.is_empty() => OutputEncoding::from_str(enc_str),
         _ => Ok(OutputEncoding::Unspecified),

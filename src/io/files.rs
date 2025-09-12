@@ -60,16 +60,14 @@ fn get_paths_matching_glob(config: &ConfigSettings) -> Result<Vec<String>> {
         if glob_matches.is_empty() {
             if file_exists(pattern) {
                 result.push(pattern.clone());
-            } else {
-                if !pattern.contains(['*', '?', '[', ']']) {
-                    let path = std::path::Path::new(pattern);
-                    if path.exists() && path.is_dir() {
-                        if config.debug_mode {
-                            eprintln!("Ignoring directory: {pattern}");
-                        }
-                    } else {
-                        return Err(anyhow::anyhow!("File not found: {}", pattern));
+            } else if !pattern.contains(['*', '?', '[', ']']) {
+                let path = std::path::Path::new(pattern);
+                if path.exists() && path.is_dir() {
+                    if config.debug_mode {
+                        eprintln!("Ignoring directory: {pattern}");
                     }
+                } else {
+                    return Err(anyhow::anyhow!("File not found: {}", pattern));
                 }
             }
         } else {

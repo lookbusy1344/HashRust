@@ -9,6 +9,7 @@ mod core;
 mod hash;
 mod io;
 mod progress;
+#[cfg(test)]
 mod unit_tests;
 
 fn main() -> Result<()> {
@@ -32,5 +33,5 @@ fn worker_main() -> Result<()> {
     }
 
     let config = process_command_line(pargs)?;
-    worker_func(config)
+    worker_func(&config)
 }

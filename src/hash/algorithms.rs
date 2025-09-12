@@ -7,8 +7,8 @@ use sha3::{Sha3_256, Sha3_384, Sha3_512};
 use whirlpool::Whirlpool;
 
 use crate::core::types::{BasicHash, HashAlgorithm, OutputEncoding};
-use crate::hash::digest_impl::hash_file_encoded;
 use crate::hash::crc32::Crc32;
+use crate::hash::digest_impl::hash_file_encoded;
 
 pub fn call_hasher(
     algo: HashAlgorithm,

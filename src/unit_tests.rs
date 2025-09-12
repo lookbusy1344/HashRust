@@ -1,5 +1,7 @@
-#[cfg(test)]
-use super::*;
+use crate::cli::args::{parse_hash_algorithm, parse_hash_encoding};
+use crate::cli::config::{ConfigSettings, HELP};
+use crate::core::types::{BasicHash, DEFAULT_HASH, HashAlgorithm, OutputEncoding};
+use std::str::FromStr;
 
 #[test]
 fn test_parse_hash_algorithm_valid() {
