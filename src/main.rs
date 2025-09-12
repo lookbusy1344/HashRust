@@ -237,8 +237,18 @@ fn get_paths_matching_glob(config: &ConfigSettings) -> Result<Vec<String>> {
             } else {
                 // Check if this looks like a specific file path (not a glob pattern)
                 // If it doesn't contain glob metacharacters, treat it as a missing file error
+                // But only if it's not a directory (directories should be silently ignored)
                 if !pattern.contains(['*', '?', '[', ']']) {
-                    return Err(anyhow::anyhow!("File not found: {}", pattern));
+                    let path = std::path::Path::new(pattern);
+                    if path.exists() && path.is_dir() {
+                        // It's a directory, silently ignore it
+                        if config.debug_mode {
+                            eprintln!("Ignoring directory: {pattern}");
+                        }
+                    } else {
+                        // It's not a directory and doesn't exist, so it's a missing file
+                        return Err(anyhow::anyhow!("File not found: {}", pattern));
+                    }
                 }
                 // Otherwise it's a glob pattern that matched nothing, which is acceptable
             }
