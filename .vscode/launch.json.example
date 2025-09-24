@@ -16,7 +16,9 @@
                 }
             },
             "args": [
-                "C:\\Users\\name\\Documents\\*.txt",
+                // Windows example: "C:\\Users\\name\\Documents\\*.txt",
+                // Unix/Linux/macOS example: "/home/user/documents/*.txt",
+                "*.txt",
                 "--debug",
                 "--single-thread"
             ],
@@ -27,9 +29,11 @@
             "name": "Debug with cppvsdbg",
             "type": "cppvsdbg",
             "request": "launch",
-            "program": "${workspaceRoot}/target/debug/hash_rust.exe",
+            "program": "${workspaceRoot}/target/debug/hash_rust",
             "args": [
-                "C:\\Users\\name\\Documents\\*.txt",
+                // Windows example: "C:\\Users\\name\\Documents\\*.txt",
+                // Unix/Linux/macOS example: "/home/user/documents/*.txt",
+                "*.txt",
                 "--debug",
                 "--single-thread"
             ],

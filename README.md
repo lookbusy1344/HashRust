@@ -11,7 +11,7 @@ Multi-threaded by default using Rayon.
 
 ```cargo build -r```
 
-It was build on Windows, but has an option to behave in a case-sensitive way for Linux.
+Cross-platform Rust application with case-sensitive glob matching option for Unix-like systems.
 
 ## Usage
 
@@ -23,7 +23,10 @@ For example:
   hash_rust *.txt --algorithm md5 --debug
 
 Or pipe in a list of files:
+  # Windows
   dir *.txt /b | hash_rust
+  # Unix/Linux/macOS
+  ls *.txt | hash_rust
 ```
 
 ## Flags
@@ -57,13 +60,15 @@ CRC32 can only be output as 32-bit integer, the `-e` option cannot be used with 
     The default is SHA3-256
 ```
 
-## Powershell integration
+## Platform-specific utilities
 
-The project also includes a Powershell wrapper to parse the output into useful objects.
+### PowerShell integration (Windows)
 
-```
+A PowerShell wrapper is included to parse the output into useful objects.
+
+```powershell
 $results = dir *.txt | .\hashfile.ps1 -algorithm sha3
-..or..
+# or
 $results = .\hashfile.ps1 *.txt -algorithm sha3
 
 $results
