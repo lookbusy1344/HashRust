@@ -7,7 +7,6 @@
 HashRust is a command-line util for hashing files. Supports `MD5, SHA1, SHA2, SHA3, Blake2` and `Whirlpool`.
 Multi-threaded by default using Rayon.
 
-
 ## Building
 
 ```cargo build -r```
@@ -17,14 +16,14 @@ It was build on Windows, but has an option to behave in a case-sensitive way for
 ## Usage
 
 ```
-hash_rust.exe filespec [flags] [options]
+hash_rust filespec [flags] [options]
 
 For example:
-  hash_rust.exe *.txt -a sha2
-  hash_rust.exe *.txt --algorithm md5 --debug
+  hash_rust *.txt -a sha2
+  hash_rust *.txt --algorithm md5 --debug
 
 Or pipe in a list of files:
-  dir *.txt /b | hash_rust.exe
+  dir *.txt /b | hash_rust
 ```
 
 ## Flags
