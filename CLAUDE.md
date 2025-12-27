@@ -30,9 +30,10 @@ HashRust is a CLI file hashing utility written in Rust that supports multiple ha
 
 ### Module Structure
 - `main.rs` - CLI argument parsing, main worker function, and threading coordination
-- `classes.rs` - Core types: `HashAlgorithm` enum, `OutputEncoding` enum, `ConfigSettings` struct, `BasicHash` wrapper
-- `hasher.rs` - Generic hashing implementation using Digest trait, file I/O optimization for small/large files
-- `crc32.rs` - Custom CRC32 implementation (separate from other hash algorithms)
+- `core/types.rs` - Core types: `HashAlgorithm` enum, `OutputEncoding` enum, `BasicHash` wrapper
+- `cli/config.rs` - Configuration: `ConfigSettings` struct
+- `hash/` - Hashing logic and algorithm implementations
+- `io/` - File handling and glob pattern matching
 - `unit_tests.rs` - Unit test module
 
 ### Key Design Patterns
@@ -69,7 +70,7 @@ HashRust is a CLI file hashing utility written in Rust that supports multiple ha
 ### Performance Considerations
 - Multi-threading is default behavior
 - Buffer size optimized for typical file sizes
-- Uses BufReader for efficient file I/O
+- Direct file I/O with large buffers for performance
 - Release builds use LTO and panic=abort for size/speed
 
 ## Development Workflow

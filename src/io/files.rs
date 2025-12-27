@@ -50,28 +50,45 @@ fn get_paths_matching_glob(config: &ConfigSettings) -> Result<Vec<String>> {
     let mut result = Vec::new();
 
     for pattern in &config.supplied_paths {
-        let glob_matches: Vec<_> = glob::glob_with(pattern, glob_settings)?
-            .filter_map(|entry| match entry {
-                Ok(path) if path.is_file() => Some(path.to_string_lossy().into_owned()),
-                _ => None,
-            })
-            .collect();
+        let glob_result = glob::glob_with(pattern, glob_settings);
 
-        if glob_matches.is_empty() {
-            if file_exists(pattern) {
-                result.push(pattern.clone());
-            } else if !pattern.contains(['*', '?', '[', ']']) {
-                let path = std::path::Path::new(pattern);
-                if path.exists() && path.is_dir() {
-                    if config.debug_mode {
-                        eprintln!("Ignoring directory: {pattern}");
+        match glob_result {
+            Ok(paths) => {
+                let glob_matches: Vec<_> = paths
+                    .filter_map(|entry| match entry {
+                        Ok(path) if path.is_file() => Some(path.to_string_lossy().into_owned()),
+                        _ => None,
+                    })
+                    .collect();
+
+                if glob_matches.is_empty() {
+                    if file_exists(pattern) {
+                        result.push(pattern.clone());
+                    } else if !pattern.contains(['*', '?', '[', ']']) {
+                        let path = std::path::Path::new(pattern);
+                        if path.exists() && path.is_dir() {
+                            if config.debug_mode {
+                                eprintln!("Ignoring directory: {pattern}");
+                            }
+                        } else {
+                            return Err(anyhow::anyhow!("File not found: {}", pattern));
+                        }
                     }
                 } else {
-                    return Err(anyhow::anyhow!("File not found: {}", pattern));
+                    result.extend(glob_matches);
                 }
             }
-        } else {
-            result.extend(glob_matches);
+            Err(_) => {
+                // If glob fails (e.g. invalid pattern), treat as literal file
+                if file_exists(pattern) {
+                    result.push(pattern.clone());
+                } else {
+                    return Err(anyhow::anyhow!(
+                        "File not found or invalid glob: {}",
+                        pattern
+                    ));
+                }
+            }
         }
     }
 

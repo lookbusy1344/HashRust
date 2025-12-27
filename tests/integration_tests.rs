@@ -223,6 +223,37 @@ fn test_crc32_with_invalid_encoding_error() {
 }
 
 #[test]
+fn test_u32_encoding_with_non_crc32_error() {
+    let test_content = "test";
+    let temp_dir = std::env::temp_dir();
+    let test_file = temp_dir.join("test_u32_invalid.txt");
+    fs::write(&test_file, test_content).expect("Failed to write test file");
+
+    let output = Command::new("cargo")
+        .args(&[
+            "run",
+            "--",
+            "-a",
+            "MD5",
+            "-e",
+            "U32",
+            test_file.to_str().unwrap(),
+        ])
+        .output()
+        .expect("Failed to execute hash_rust");
+
+    fs::remove_file(&test_file).ok();
+
+    // Should fail with non-zero exit code
+    assert!(!output.status.success());
+    let stderr = String::from_utf8_lossy(&output.stderr);
+
+    // Should contain error message about incompatible algorithm/encoding combination
+    assert!(stderr.to_lowercase().contains("error"));
+    assert!(stderr.contains("CRC32 must use U32 encoding"));
+}
+
+#[test]
 fn test_empty_file_path_error() {
     // Test with no file arguments
     let output = Command::new("cargo")

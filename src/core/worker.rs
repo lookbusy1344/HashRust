@@ -61,7 +61,7 @@ where
     }
 
     for pathstr in paths {
-        let file_hash = hash_with_progress(config, pathstr.as_ref().to_string());
+        let file_hash = hash_with_progress(config, pathstr.as_ref().to_string(), false);
 
         match file_hash {
             Ok(basic_hash) => {
@@ -92,7 +92,11 @@ where
     };
 
     paths.par_iter().for_each(|pathstr| {
-        let file_hash = hash_with_progress(config, pathstr.as_ref().to_string());
+        let file_hash = hash_with_progress(
+            config,
+            pathstr.as_ref().to_string(),
+            overall_progress.is_some(),
+        );
 
         if let Some(ref pb) = overall_progress {
             pb.inc(1);
@@ -116,13 +120,17 @@ where
     }
 }
 
-fn hash_with_progress<S>(config: &ConfigSettings, pathstr: S) -> Result<BasicHash>
+fn hash_with_progress<S>(
+    config: &ConfigSettings,
+    pathstr: S,
+    suppress_spinner: bool,
+) -> Result<BasicHash>
 where
     S: AsRef<str> + Display + Clone + Send + 'static,
 {
     let pathstr_clone = pathstr.clone();
 
-    let progress_handle = if config.no_progress {
+    let progress_handle = if config.no_progress || suppress_spinner {
         None
     } else {
         ProgressManager::create_file_progress(pathstr_clone.clone(), config.debug_mode)

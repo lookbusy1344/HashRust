@@ -7,9 +7,9 @@
 use indicatif::{ProgressBar, ProgressStyle};
 use std::fmt::Display;
 use std::sync::{
+    Arc,
     atomic::{AtomicUsize, Ordering},
     mpsc,
-    Arc,
 };
 use std::time::Duration;
 

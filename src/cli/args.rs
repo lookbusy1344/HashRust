@@ -25,7 +25,9 @@ pub fn process_command_line(mut pargs: Arguments) -> Result<ConfigSettings> {
         other => other,
     };
 
-    if algo == HashAlgorithm::CRC32 && encoding != OutputEncoding::U32 {
+    if (algo == HashAlgorithm::CRC32 && encoding != OutputEncoding::U32)
+        || (algo != HashAlgorithm::CRC32 && encoding == OutputEncoding::U32)
+    {
         return Err(anyhow!(
             "CRC32 must use U32 encoding, and U32 encoding can only be used with CRC32"
         ));

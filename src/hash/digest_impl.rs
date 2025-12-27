@@ -1,5 +1,5 @@
 use std::fs::File;
-use std::io::{BufReader, Read};
+use std::io::Read;
 use std::path::Path;
 
 use byteorder::{BigEndian, ByteOrder};
@@ -17,12 +17,11 @@ fn hash_file<D: Digest>(filename: impl AsRef<str>) -> anyhow::Result<Output<D>> 
         return hash_file_whole::<D>(filename);
     }
 
-    let file = File::open(filename.as_ref())?;
-    let mut reader = BufReader::new(file);
+    let mut file = File::open(filename.as_ref())?;
     let mut buffer = build_heap_buffer(BUFFER_SIZE);
     let mut hasher = D::new();
 
-    while let Ok(bytes_read) = reader.read(&mut buffer) {
+    while let Ok(bytes_read) = file.read(&mut buffer) {
         if bytes_read == 0 {
             break;
         }
