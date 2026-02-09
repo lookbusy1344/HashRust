@@ -91,17 +91,28 @@ where
         ProgressManager::create_overall_progress(paths.len(), config.debug_mode)
     };
 
-    paths.par_iter().for_each(|pathstr| {
-        let file_hash = hash_with_progress(
-            config,
-            pathstr.as_ref().to_string(),
-            overall_progress.is_some(),
-        );
+    let results: Vec<_> = paths
+        .par_iter()
+        .map(|pathstr| {
+            let file_hash = hash_with_progress(
+                config,
+                pathstr.as_ref().to_string(),
+                overall_progress.is_some(),
+            );
 
-        if let Some(ref pb) = overall_progress {
-            pb.inc(1);
-        }
+            if let Some(ref pb) = overall_progress {
+                pb.inc(1);
+            }
 
+            (pathstr, file_hash)
+        })
+        .collect();
+
+    if let Some(pb) = overall_progress {
+        pb.finish_with_message("Complete!");
+    }
+
+    for (pathstr, file_hash) in results {
         match file_hash {
             Ok(basic_hash) => {
                 if config.exclude_fn {
@@ -113,10 +124,6 @@ where
 
             Err(e) => eprintln!("File error for '{pathstr}': {e}"),
         }
-    });
-
-    if let Some(pb) = overall_progress {
-        pb.finish_with_message("Complete!");
     }
 }
 
