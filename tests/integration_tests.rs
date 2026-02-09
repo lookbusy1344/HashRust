@@ -265,3 +265,41 @@ fn test_help_flag() {
     // Should contain help information
     assert!(stdout.to_lowercase().contains("usage") || stdout.to_lowercase().contains("help"));
 }
+
+#[test]
+fn test_multi_file_parallel_hashing() {
+    // Create multiple temp files to exercise parallel path
+    let files: Vec<_> = (0..5)
+        .map(|i| {
+            let content = format!("test content {i}");
+            create_temp_file(&content)
+        })
+        .collect();
+
+    // Build args with all file paths
+    let mut args = vec!["run", "--"];
+    let paths: Vec<_> = files.iter().map(|f| f.path().to_str().unwrap()).collect();
+    args.extend(&paths);
+
+    let output = Command::new("cargo")
+        .args(&args)
+        .output()
+        .expect("Failed to execute hash_rust");
+
+    assert!(output.status.success());
+    let stdout = String::from_utf8_lossy(&output.stdout);
+
+    // Verify we got output for all 5 files
+    let lines: Vec<_> = stdout.lines().filter(|l| !l.is_empty()).collect();
+    assert_eq!(lines.len(), 5, "Should have output for all 5 files");
+
+    // Verify each line contains a hash and filename
+    for (i, line) in lines.iter().enumerate() {
+        assert!(line.len() > 64, "Line {i} should contain hash + filename");
+        // Verify output is not interleaved - each line should be a complete hash + path
+        assert!(
+            line.split_whitespace().count() == 2,
+            "Line {i} should have exactly 2 space-separated parts (hash and path)"
+        );
+    }
+}
