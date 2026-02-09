@@ -66,11 +66,7 @@ pub fn hash_file_encoded<D: Digest>(
 
 fn file_size(path: impl AsRef<str>) -> anyhow::Result<u64> {
     let path = Path::new(path.as_ref());
-    if path.exists() && path.is_file() {
-        Ok(path.metadata()?.len())
-    } else {
-        Err(anyhow::anyhow!("File not found: {}", path.display()))
-    }
+    Ok(path.metadata()?.len())
 }
 
 fn build_heap_buffer<T: Default + Copy>(len: usize) -> Box<[T]> {
