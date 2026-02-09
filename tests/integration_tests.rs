@@ -1,5 +1,5 @@
 use std::io::Write;
-use std::process::Command;
+use std::process::{Command, Stdio};
 use tempfile::NamedTempFile;
 
 /// Helper function to create a temporary file with content
@@ -302,4 +302,96 @@ fn test_multi_file_parallel_hashing() {
             "Line {i} should have exactly 2 space-separated parts (hash and path)"
         );
     }
+}
+
+#[test]
+fn test_stdin_file_paths() {
+    // Create test files
+    let file1 = create_temp_file("content1");
+    let file2 = create_temp_file("content2");
+    let file3 = create_temp_file("content3");
+
+    // Prepare stdin with file paths (one per line)
+    let stdin_input = format!(
+        "{}\n{}\n{}",
+        file1.path().display(),
+        file2.path().display(),
+        file3.path().display()
+    );
+
+    // Run with paths from stdin
+    let mut child = Command::new("cargo")
+        .args(&["run", "--"])
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .expect("Failed to spawn hash_rust");
+
+    // Write to stdin
+    if let Some(mut stdin) = child.stdin.take() {
+        stdin
+            .write_all(stdin_input.as_bytes())
+            .expect("Failed to write to stdin");
+    }
+
+    let output = child
+        .wait_with_output()
+        .expect("Failed to wait on hash_rust");
+
+    assert!(output.status.success());
+    let stdout = String::from_utf8_lossy(&output.stdout);
+
+    // Should have output for all 3 files
+    let lines: Vec<_> = stdout.lines().filter(|l| !l.is_empty()).collect();
+    assert_eq!(
+        lines.len(),
+        3,
+        "Should have output for all 3 files from stdin"
+    );
+
+    // Verify each output line contains a hash
+    for line in lines {
+        assert!(
+            line.split_whitespace().count() == 2,
+            "Each line should have hash and path"
+        );
+    }
+}
+
+#[test]
+fn test_stdin_with_nonexistent_paths() {
+    // Mix valid and invalid paths
+    let valid_file = create_temp_file("valid content");
+    let stdin_input = format!(
+        "{}\n/nonexistent/file1.txt\n/nonexistent/file2.txt",
+        valid_file.path().display()
+    );
+
+    let mut child = Command::new("cargo")
+        .args(&["run", "--"])
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .expect("Failed to spawn hash_rust");
+
+    // Write to stdin
+    if let Some(mut stdin) = child.stdin.take() {
+        stdin
+            .write_all(stdin_input.as_bytes())
+            .expect("Failed to write to stdin");
+    }
+
+    let output = child
+        .wait_with_output()
+        .expect("Failed to wait on hash_rust");
+
+    // Should succeed but only hash the valid file
+    assert!(output.status.success());
+    let stdout = String::from_utf8_lossy(&output.stdout);
+
+    // Should have output for only 1 valid file
+    let lines: Vec<_> = stdout.lines().filter(|l| !l.is_empty()).collect();
+    assert_eq!(lines.len(), 1, "Should only hash the valid file");
 }
