@@ -12,23 +12,23 @@ lto = 'fat'
 strip = true
 
 [dependencies]
-strum = { version = ">= 0.27.1", features = ["derive"], default-features = false }
-anyhow = ">= 1.0.98"
-digest = { default-features = false, version = "> 0.10.5" }
-git-version = ">= 0.3.9"
-glob = ">= 0.3.2"
-hex = ">= 0.4.3"
-data-encoding = ">= 2.9.0"
-pico-args = ">= 0.5"
-rayon = ">= 1.10"
-readonly = ">= 0.2.13"
-generic-array = ">= 0.2"
-byteorder = { default-features = false, version = ">= 1.5.0" }
-md-5 = { default-features = false, version = ">= 0.10.6" }
-sha1 = { default-features = false, version = ">= 0.10.6" }
-sha2 = { default-features = false, version = ">= 0.10.8" }
-sha3 = { default-features = false, version = ">= 0.10.8" }
-whirlpool = { default-features = false, version = ">= 0.10.4" }
-blake2 = { default-features = false, version = ">= 0.10.6" }
-crc32fast = { default-features = false, version = ">= 1.4.2" }
-indicatif = ">= 0.17.9"
+strum = { version = "0.27", features = ["derive"], default-features = false }
+anyhow = "1.0"
+digest = { default-features = false, version = "0.10" }
+git-version = "0.3"
+glob = "0.3"
+hex = "0.4"
+data-encoding = "2.10"
+pico-args = "0.5"
+rayon = "1.10"
+readonly = "0.2"
+generic-array = "0.14"
+byteorder = { default-features = false, version = "1.5" }
+md-5 = { default-features = false, version = "0.10" }
+sha1 = { default-features = false, version = "0.10" }
+sha2 = { default-features = false, version = "0.10" }
+sha3 = { default-features = false, version = "0.10" }
+whirlpool = { default-features = false, version = "0.10" }
+blake2 = { default-features = false, version = "0.10" }
+crc32fast = { default-features = false, version = "1.4" }
+indicatif = "0.17"
