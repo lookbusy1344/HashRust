@@ -71,7 +71,7 @@ fn get_paths_matching_glob(config: &ConfigSettings) -> Result<Vec<String>> {
                                 eprintln!("Ignoring directory: {pattern}");
                             }
                         } else {
-                            return Err(anyhow::anyhow!("File not found: {}", pattern));
+                            return Err(anyhow::anyhow!("File not found: {pattern}"));
                         }
                     }
                 } else {
@@ -83,10 +83,7 @@ fn get_paths_matching_glob(config: &ConfigSettings) -> Result<Vec<String>> {
                 if file_exists(pattern) {
                     result.push(pattern.clone());
                 } else {
-                    return Err(anyhow::anyhow!(
-                        "File not found or invalid glob: {}",
-                        pattern
-                    ));
+                    return Err(anyhow::anyhow!("File not found or invalid glob: {pattern}"));
                 }
             }
         }
