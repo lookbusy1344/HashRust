@@ -21,7 +21,8 @@ fn hash_file<D: Digest>(filename: impl AsRef<str>) -> anyhow::Result<Output<D>> 
     let mut buffer = build_heap_buffer(BUFFER_SIZE);
     let mut hasher = D::new();
 
-    while let Ok(bytes_read) = file.read(&mut buffer) {
+    loop {
+        let bytes_read = file.read(&mut buffer)?;
         if bytes_read == 0 {
             break;
         }
