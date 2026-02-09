@@ -1,22 +1,28 @@
-use std::fs;
+use std::io::Write;
 use std::process::Command;
+use tempfile::NamedTempFile;
+
+/// Helper function to create a temporary file with content
+fn create_temp_file(content: &str) -> NamedTempFile {
+    let mut temp_file = NamedTempFile::new().expect("Failed to create temp file");
+    temp_file
+        .write_all(content.as_bytes())
+        .expect("Failed to write to temp file");
+    temp_file.flush().expect("Failed to flush temp file");
+    temp_file
+}
 
 #[test]
 fn test_sha3_256_hash() {
-    // Create a temporary test file
     let test_content = "Hello, World!";
-    let temp_dir = std::env::temp_dir();
-    let test_file = temp_dir.join("test_file.txt");
-    fs::write(&test_file, test_content).expect("Failed to write test file");
+    let test_file = create_temp_file(test_content);
+    let test_path = test_file.path();
 
     // Run the hash_rust binary with SHA3-256 (default)
     let output = Command::new("cargo")
-        .args(&["run", "--", test_file.to_str().unwrap()])
+        .args(&["run", "--", test_path.to_str().unwrap()])
         .output()
         .expect("Failed to execute hash_rust");
-
-    // Clean up
-    fs::remove_file(&test_file).ok();
 
     // Check output
     assert!(output.status.success());
@@ -24,22 +30,19 @@ fn test_sha3_256_hash() {
 
     // SHA3-256 hash of "Hello, World!" should be consistent
     assert!(stdout.contains("1af17a664e3fa8e419b8ba05c2a173169df76162a5a286e0c405b460d478f7ef"));
-    assert!(stdout.contains(test_file.file_name().unwrap().to_str().unwrap()));
+    assert!(stdout.contains(test_path.file_name().unwrap().to_str().unwrap()));
 }
 
 #[test]
 fn test_md5_hash() {
     let test_content = "test";
-    let temp_dir = std::env::temp_dir();
-    let test_file = temp_dir.join("test_md5.txt");
-    fs::write(&test_file, test_content).expect("Failed to write test file");
+    let test_file = create_temp_file(test_content);
+    let test_path = test_file.path();
 
     let output = Command::new("cargo")
-        .args(&["run", "--", "-a", "MD5", test_file.to_str().unwrap()])
+        .args(&["run", "--", "-a", "MD5", test_path.to_str().unwrap()])
         .output()
         .expect("Failed to execute hash_rust");
-
-    fs::remove_file(&test_file).ok();
 
     assert!(output.status.success());
     let stdout = String::from_utf8_lossy(&output.stdout);
@@ -51,16 +54,13 @@ fn test_md5_hash() {
 #[test]
 fn test_crc32_hash() {
     let test_content = "test";
-    let temp_dir = std::env::temp_dir();
-    let test_file = temp_dir.join("test_crc32.txt");
-    fs::write(&test_file, test_content).expect("Failed to write test file");
+    let test_file = create_temp_file(test_content);
+    let test_path = test_file.path();
 
     let output = Command::new("cargo")
-        .args(&["run", "--", "-a", "CRC32", test_file.to_str().unwrap()])
+        .args(&["run", "--", "-a", "CRC32", test_path.to_str().unwrap()])
         .output()
         .expect("Failed to execute hash_rust");
-
-    fs::remove_file(&test_file).ok();
 
     assert!(output.status.success());
     let stdout = String::from_utf8_lossy(&output.stdout);
@@ -72,22 +72,19 @@ fn test_crc32_hash() {
 #[test]
 fn test_exclude_filenames() {
     let test_content = "test";
-    let temp_dir = std::env::temp_dir();
-    let test_file = temp_dir.join("test_exclude.txt");
-    fs::write(&test_file, test_content).expect("Failed to write test file");
+    let test_file = create_temp_file(test_content);
+    let test_path = test_file.path();
 
     let output = Command::new("cargo")
-        .args(&["run", "--", "-x", test_file.to_str().unwrap()])
+        .args(&["run", "--", "-x", test_path.to_str().unwrap()])
         .output()
         .expect("Failed to execute hash_rust");
-
-    fs::remove_file(&test_file).ok();
 
     assert!(output.status.success());
     let stdout = String::from_utf8_lossy(&output.stdout);
 
     // Should not contain filename when -x flag is used
-    assert!(!stdout.contains(test_file.file_name().unwrap().to_str().unwrap()));
+    assert!(!stdout.contains(test_path.file_name().unwrap().to_str().unwrap()));
     // But should contain the hash. SHA3-256 hash output is 64 characters, so this ensures a hash is present.
     const MIN_HASH_LENGTH: usize = 64;
     assert!(stdout.len() >= MIN_HASH_LENGTH);
@@ -96,16 +93,13 @@ fn test_exclude_filenames() {
 #[test]
 fn test_base64_encoding() {
     let test_content = "test";
-    let temp_dir = std::env::temp_dir();
-    let test_file = temp_dir.join("test_base64.txt");
-    fs::write(&test_file, test_content).expect("Failed to write test file");
+    let test_file = create_temp_file(test_content);
+    let test_path = test_file.path();
 
     let output = Command::new("cargo")
-        .args(&["run", "--", "-e", "Base64", test_file.to_str().unwrap()])
+        .args(&["run", "--", "-e", "Base64", test_path.to_str().unwrap()])
         .output()
         .expect("Failed to execute hash_rust");
-
-    fs::remove_file(&test_file).ok();
 
     assert!(output.status.success());
     let stdout = String::from_utf8_lossy(&output.stdout);
@@ -138,9 +132,8 @@ fn test_nonexistent_file_error() {
 #[test]
 fn test_invalid_algorithm_error() {
     let test_content = "test";
-    let temp_dir = std::env::temp_dir();
-    let test_file = temp_dir.join("test_invalid_algo.txt");
-    fs::write(&test_file, test_content).expect("Failed to write test file");
+    let test_file = create_temp_file(test_content);
+    let test_path = test_file.path();
 
     let output = Command::new("cargo")
         .args(&[
@@ -148,12 +141,10 @@ fn test_invalid_algorithm_error() {
             "--",
             "-a",
             "INVALID_ALGORITHM",
-            test_file.to_str().unwrap(),
+            test_path.to_str().unwrap(),
         ])
         .output()
         .expect("Failed to execute hash_rust");
-
-    fs::remove_file(&test_file).ok();
 
     // Should fail with non-zero exit code
     assert!(!output.status.success());
@@ -166,9 +157,8 @@ fn test_invalid_algorithm_error() {
 #[test]
 fn test_invalid_encoding_error() {
     let test_content = "test";
-    let temp_dir = std::env::temp_dir();
-    let test_file = temp_dir.join("test_invalid_encoding.txt");
-    fs::write(&test_file, test_content).expect("Failed to write test file");
+    let test_file = create_temp_file(test_content);
+    let test_path = test_file.path();
 
     let output = Command::new("cargo")
         .args(&[
@@ -176,12 +166,10 @@ fn test_invalid_encoding_error() {
             "--",
             "-e",
             "INVALID_ENCODING",
-            test_file.to_str().unwrap(),
+            test_path.to_str().unwrap(),
         ])
         .output()
         .expect("Failed to execute hash_rust");
-
-    fs::remove_file(&test_file).ok();
 
     // Should fail with non-zero exit code
     assert!(!output.status.success());
@@ -194,9 +182,8 @@ fn test_invalid_encoding_error() {
 #[test]
 fn test_crc32_with_invalid_encoding_error() {
     let test_content = "test";
-    let temp_dir = std::env::temp_dir();
-    let test_file = temp_dir.join("test_crc32_invalid_encoding.txt");
-    fs::write(&test_file, test_content).expect("Failed to write test file");
+    let test_file = create_temp_file(test_content);
+    let test_path = test_file.path();
 
     // CRC32 should only work with Hex encoding (U32 format)
     let output = Command::new("cargo")
@@ -207,12 +194,10 @@ fn test_crc32_with_invalid_encoding_error() {
             "CRC32",
             "-e",
             "Base64",
-            test_file.to_str().unwrap(),
+            test_path.to_str().unwrap(),
         ])
         .output()
         .expect("Failed to execute hash_rust");
-
-    fs::remove_file(&test_file).ok();
 
     // Should fail with non-zero exit code
     assert!(!output.status.success());
@@ -225,9 +210,8 @@ fn test_crc32_with_invalid_encoding_error() {
 #[test]
 fn test_u32_encoding_with_non_crc32_error() {
     let test_content = "test";
-    let temp_dir = std::env::temp_dir();
-    let test_file = temp_dir.join("test_u32_invalid.txt");
-    fs::write(&test_file, test_content).expect("Failed to write test file");
+    let test_file = create_temp_file(test_content);
+    let test_path = test_file.path();
 
     let output = Command::new("cargo")
         .args(&[
@@ -237,12 +221,10 @@ fn test_u32_encoding_with_non_crc32_error() {
             "MD5",
             "-e",
             "U32",
-            test_file.to_str().unwrap(),
+            test_path.to_str().unwrap(),
         ])
         .output()
         .expect("Failed to execute hash_rust");
-
-    fs::remove_file(&test_file).ok();
 
     // Should fail with non-zero exit code
     assert!(!output.status.success());
