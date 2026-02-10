@@ -1,7 +1,6 @@
 use crate::core::types::{HashAlgorithm, OutputEncoding};
 
 #[allow(clippy::struct_excessive_bools)]
-#[readonly::make]
 #[derive(Debug)]
 pub struct ConfigSettings {
     pub debug_mode: bool,
@@ -27,6 +26,7 @@ impl ConfigSettings {
         algorithm: HashAlgorithm,
         encoding: OutputEncoding,
         limit_num: Option<usize>,
+        supplied_paths: Vec<String>,
     ) -> Self {
         Self {
             debug_mode,
@@ -37,12 +37,8 @@ impl ConfigSettings {
             algorithm,
             encoding,
             limit_num,
-            supplied_paths: Vec::new(),
+            supplied_paths,
         }
-    }
-
-    pub fn set_supplied_paths(&mut self, paths: Vec<String>) {
-        self.supplied_paths = paths;
     }
 }
 

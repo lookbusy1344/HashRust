@@ -83,6 +83,7 @@ fn test_config_settings_new() {
         HashAlgorithm::SHA3_256,
         OutputEncoding::Hex,
         Some(100),
+        Vec::new(), // supplied_paths
     );
 
     assert!(config.debug_mode);
@@ -95,8 +96,9 @@ fn test_config_settings_new() {
 }
 
 #[test]
-fn test_config_settings_set_paths() {
-    let mut config = ConfigSettings::new(
+fn test_config_settings_with_paths() {
+    let paths = vec!["file1.txt".to_string(), "file2.txt".to_string()];
+    let config = ConfigSettings::new(
         false,
         false,
         false,
@@ -105,10 +107,8 @@ fn test_config_settings_set_paths() {
         HashAlgorithm::MD5,
         OutputEncoding::Base64,
         None,
+        paths.clone(), // supplied_paths
     );
-
-    let paths = vec!["file1.txt".to_string(), "file2.txt".to_string()];
-    config.set_supplied_paths(paths.clone());
 
     assert_eq!(config.supplied_paths, paths);
 }
@@ -347,7 +347,7 @@ mod glob_tests {
         let base_path = temp_dir.path();
 
         let pattern = format!("{}/*.txt", base_path.display());
-        let mut config = ConfigSettings::new(
+        let config = ConfigSettings::new(
             false,
             false,
             false,
@@ -356,8 +356,8 @@ mod glob_tests {
             HashAlgorithm::SHA3_256,
             OutputEncoding::Hex,
             None,
+            vec![pattern],
         );
-        config.set_supplied_paths(vec![pattern]);
 
         let result = get_required_filenames(&config);
         assert!(result.is_ok());
@@ -372,7 +372,7 @@ mod glob_tests {
         let base_path = temp_dir.path();
 
         let pattern = format!("{}/*.txt", base_path.display());
-        let mut config = ConfigSettings::new(
+        let config = ConfigSettings::new(
             false,
             false,
             false,
@@ -381,8 +381,8 @@ mod glob_tests {
             HashAlgorithm::SHA3_256,
             OutputEncoding::Hex,
             None,
+            vec![pattern],
         );
-        config.set_supplied_paths(vec![pattern]);
 
         let result = get_required_filenames(&config);
         assert!(result.is_ok());
@@ -397,7 +397,7 @@ mod glob_tests {
         let base_path = temp_dir.path();
 
         let pattern = format!("{}/*.md", base_path.display());
-        let mut config = ConfigSettings::new(
+        let config = ConfigSettings::new(
             false,
             false,
             false,
@@ -406,8 +406,8 @@ mod glob_tests {
             HashAlgorithm::SHA3_256,
             OutputEncoding::Hex,
             None,
+            vec![pattern],
         );
-        config.set_supplied_paths(vec![pattern]);
 
         let result = get_required_filenames(&config);
         assert!(result.is_ok());
@@ -423,7 +423,7 @@ mod glob_tests {
         let base_path = temp_dir.path();
 
         let pattern = format!("{}/*.xyz", base_path.display());
-        let mut config = ConfigSettings::new(
+        let config = ConfigSettings::new(
             false,
             false,
             false,
@@ -432,8 +432,8 @@ mod glob_tests {
             HashAlgorithm::SHA3_256,
             OutputEncoding::Hex,
             None,
+            vec![pattern],
         );
-        config.set_supplied_paths(vec![pattern]);
 
         let result = get_required_filenames(&config);
         assert!(result.is_ok());
@@ -448,7 +448,7 @@ mod glob_tests {
         let base_path = temp_dir.path();
 
         let literal_path = base_path.join("test1.txt").to_string_lossy().to_string();
-        let mut config = ConfigSettings::new(
+        let config = ConfigSettings::new(
             false,
             false,
             false,
@@ -457,8 +457,8 @@ mod glob_tests {
             HashAlgorithm::SHA3_256,
             OutputEncoding::Hex,
             None,
+            vec![literal_path.clone()],
         );
-        config.set_supplied_paths(vec![literal_path.clone()]);
 
         let result = get_required_filenames(&config);
         assert!(result.is_ok());
@@ -477,7 +477,7 @@ mod glob_tests {
             .join("nonexistent.txt")
             .to_string_lossy()
             .to_string();
-        let mut config = ConfigSettings::new(
+        let config = ConfigSettings::new(
             false,
             false,
             false,
@@ -486,8 +486,8 @@ mod glob_tests {
             HashAlgorithm::SHA3_256,
             OutputEncoding::Hex,
             None,
+            vec![nonexistent],
         );
-        config.set_supplied_paths(vec![nonexistent]);
 
         let result = get_required_filenames(&config);
         assert!(result.is_err());
@@ -500,7 +500,7 @@ mod glob_tests {
         let base_path = temp_dir.path();
 
         let dir_path = base_path.join("subdir").to_string_lossy().to_string();
-        let mut config = ConfigSettings::new(
+        let config = ConfigSettings::new(
             false,
             false,
             false,
@@ -509,8 +509,8 @@ mod glob_tests {
             HashAlgorithm::SHA3_256,
             OutputEncoding::Hex,
             None,
+            vec![dir_path],
         );
-        config.set_supplied_paths(vec![dir_path]);
 
         let result = get_required_filenames(&config);
         // Should return empty list or error (directory is ignored in non-debug mode)
@@ -526,7 +526,7 @@ mod glob_tests {
 
         let pattern1 = format!("{}/*.txt", base_path.display());
         let pattern2 = format!("{}/*.md", base_path.display());
-        let mut config = ConfigSettings::new(
+        let config = ConfigSettings::new(
             false,
             false,
             false,
@@ -535,8 +535,8 @@ mod glob_tests {
             HashAlgorithm::SHA3_256,
             OutputEncoding::Hex,
             None,
+            vec![pattern1, pattern2],
         );
-        config.set_supplied_paths(vec![pattern1, pattern2]);
 
         let result = get_required_filenames(&config);
         assert!(result.is_ok());
@@ -551,7 +551,7 @@ mod glob_tests {
         let base_path = temp_dir.path();
 
         let pattern = format!("{}/*", base_path.display());
-        let mut config = ConfigSettings::new(
+        let config = ConfigSettings::new(
             false,
             false,
             false,
@@ -560,8 +560,8 @@ mod glob_tests {
             HashAlgorithm::SHA3_256,
             OutputEncoding::Hex,
             Some(2), // Limit to 2 files
+            vec![pattern],
         );
-        config.set_supplied_paths(vec![pattern]);
 
         let result = get_required_filenames(&config);
         assert!(result.is_ok());
@@ -577,7 +577,7 @@ mod glob_tests {
 
         // Pattern that would match both files and directories
         let pattern = format!("{}/*", base_path.display());
-        let mut config = ConfigSettings::new(
+        let config = ConfigSettings::new(
             false,
             false,
             false,
@@ -586,8 +586,8 @@ mod glob_tests {
             HashAlgorithm::SHA3_256,
             OutputEncoding::Hex,
             None,
+            vec![pattern],
         );
-        config.set_supplied_paths(vec![pattern]);
 
         let result = get_required_filenames(&config);
         assert!(result.is_ok());
@@ -611,6 +611,7 @@ mod glob_tests {
             HashAlgorithm::SHA3_256,
             OutputEncoding::Hex,
             None,
+            Vec::new(), // supplied_paths
         );
 
         assert!(config.supplied_paths.is_empty());

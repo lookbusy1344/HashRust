@@ -34,16 +34,13 @@ pub fn process_command_line(mut pargs: Arguments) -> Result<ConfigSettings> {
         ));
     }
 
-    let mut config = ConfigSettings::new(
-        pargs.contains(["-d", "--debug"]),
-        pargs.contains(["-x", "--exclude-filenames"]),
-        pargs.contains(["-s", "--single-thread"]),
-        pargs.contains(["-c", "--case-sensitive"]),
-        pargs.contains(["-n", "--no-progress"]),
-        algo,
-        encoding,
-        pargs.opt_value_from_str(["-l", "--limit"])?,
-    );
+    // Collect flags before calling args_finished which takes ownership
+    let debug_mode = pargs.contains(["-d", "--debug"]);
+    let exclude_fn = pargs.contains(["-x", "--exclude-filenames"]);
+    let single_thread = pargs.contains(["-s", "--single-thread"]);
+    let case_sensitive = pargs.contains(["-c", "--case-sensitive"]);
+    let no_progress = pargs.contains(["-n", "--no-progress"]);
+    let limit_num = pargs.opt_value_from_str(["-l", "--limit"])?;
 
     let remaining_args = args_finished(pargs)?;
 
@@ -52,7 +49,17 @@ pub fn process_command_line(mut pargs: Arguments) -> Result<ConfigSettings> {
         .map(|arg| arg.to_string_lossy().to_string())
         .collect();
 
-    config.set_supplied_paths(supplied_paths);
+    let config = ConfigSettings::new(
+        debug_mode,
+        exclude_fn,
+        single_thread,
+        case_sensitive,
+        no_progress,
+        algo,
+        encoding,
+        limit_num,
+        supplied_paths,
+    );
 
     Ok(config)
 }
@@ -64,7 +71,9 @@ pub fn parse_hash_algorithm(algorithm: Option<&str>) -> Result<HashAlgorithm, st
     }
 }
 
-pub fn parse_hash_encoding(encoding: Option<&str>) -> Result<Option<OutputEncoding>, strum::ParseError> {
+pub fn parse_hash_encoding(
+    encoding: Option<&str>,
+) -> Result<Option<OutputEncoding>, strum::ParseError> {
     match encoding {
         Some(enc_str) if !enc_str.is_empty() => Ok(Some(OutputEncoding::from_str(enc_str)?)),
         _ => Ok(None),
