@@ -42,6 +42,7 @@ HashRust is a CLI file hashing utility written in Rust that supports multiple ha
 - Single-threaded fallback for single files or when explicitly requested
 - Enum-driven algorithm selection with `strum` for string parsing
 - Buffer size optimization: small files (≤32KB) read entirely, larger files use 32KB chunks
+- Keep cloning to a minimum, avoid it where possible
 
 ### Algorithm Support
 - CRC32 outputs as U32 format only (10-digit zero-padded)
@@ -77,7 +78,7 @@ HashRust is a CLI file hashing utility written in Rust that supports multiple ha
 
 **IMPORTANT: After making code changes:**
 1. Always run `cargo fmt` to ensure consistent formatting
-2. Run `cargo clippy --color=always -- -D clippy::all -D clippy::pedantic` to catch potential issues and ensure code quality
+2. Run `cargo clippy -- -D clippy::all -D clippy::pedantic` to catch potential issues and ensure code quality
 
 **Security:**
 - Run `cargo audit` once a day when working on this project to check for security vulnerabilities in dependencies
