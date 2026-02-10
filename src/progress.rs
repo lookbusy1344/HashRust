@@ -48,7 +48,7 @@ pub struct ProgressManager;
 impl ProgressManager {
     /// Create a progress indication for a single file operation
     /// Shows a spinner if the operation takes longer than the threshold
-    pub fn create_file_progress<S>(pathstr: S, _debug_mode: bool) -> Option<ProgressHandle>
+    pub fn create_file_progress<S>(pathstr: S) -> Option<ProgressHandle>
     where
         S: AsRef<str> + Display + Clone + Send + 'static,
     {
@@ -95,10 +95,7 @@ impl ProgressManager {
     }
 
     /// Create an overall progress bar for multiple file operations
-    pub fn create_overall_progress(
-        file_count: usize,
-        _debug_mode: bool,
-    ) -> Option<Arc<ProgressBar>> {
+    pub fn create_overall_progress(file_count: usize) -> Option<Arc<ProgressBar>> {
         // For large file sets, show an overall progress bar instead of per-file spinners
         if file_count < 10 {
             return None;

@@ -88,7 +88,7 @@ where
     let overall_progress = if config.no_progress {
         None
     } else {
-        ProgressManager::create_overall_progress(paths.len(), config.debug_mode)
+        ProgressManager::create_overall_progress(paths.len())
     };
 
     let results: Vec<_> = paths
@@ -140,7 +140,7 @@ where
     let progress_handle = if config.no_progress || suppress_spinner {
         None
     } else {
-        ProgressManager::create_file_progress(pathstr_clone.clone(), config.debug_mode)
+        ProgressManager::create_file_progress(pathstr_clone.clone())
     };
 
     let start_time = Instant::now();
