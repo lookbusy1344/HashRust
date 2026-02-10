@@ -143,7 +143,8 @@ mod hash_tests {
 
     fn create_test_file_with_content(content: &[u8]) -> NamedTempFile {
         let mut file = NamedTempFile::new().expect("Failed to create temp file");
-        file.write_all(content).expect("Failed to write to temp file");
+        file.write_all(content)
+            .expect("Failed to write to temp file");
         file.flush().expect("Failed to flush temp file");
         file
     }
@@ -247,30 +248,8 @@ mod hash_tests {
         assert_eq!(result.unwrap().0, "3632233996");
     }
 
-    #[test]
-    fn test_call_hasher_crc32_hex_error() {
-        let file = create_test_file_with_content(b"test");
-        let path = file.path().to_string_lossy().to_string();
-
-        // CRC32 with non-U32 encoding should fail
-        let result = call_hasher(HashAlgorithm::CRC32, OutputEncoding::Hex, &path);
-        assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("CRC32 must use U32 encoding"));
-    }
-
-    #[test]
-    fn test_call_hasher_sha3_u32_error() {
-        let file = create_test_file_with_content(b"test");
-        let path = file.path().to_string_lossy().to_string();
-
-        // Non-CRC32 with U32 encoding should fail
-        let result = call_hasher(HashAlgorithm::SHA3_256, OutputEncoding::U32, &path);
-        assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("U32 encoding can only be used with CRC32"));
-    }
+    // Note: CRC32/U32 validation is tested at the CLI layer in integration tests
+    // (test_crc32_with_invalid_encoding_error and test_u32_encoding_with_non_crc32_error)
 
     #[test]
     fn test_call_hasher_empty_file() {

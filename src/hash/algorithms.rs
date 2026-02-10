@@ -1,4 +1,4 @@
-use anyhow::{Result, anyhow};
+use anyhow::Result;
 use blake2::{Blake2b512, Blake2s256};
 use md5::Md5;
 use sha1::Sha1;
@@ -15,14 +15,7 @@ pub fn call_hasher(
     encoding: OutputEncoding,
     path: impl AsRef<str>,
 ) -> Result<BasicHash> {
-    if (algo == HashAlgorithm::CRC32 && encoding != OutputEncoding::U32)
-        || (algo != HashAlgorithm::CRC32 && encoding == OutputEncoding::U32)
-    {
-        return Err(anyhow!(
-            "CRC32 must use U32 encoding, and U32 encoding can only be used with CRC32"
-        ));
-    }
-
+    // CRC32/U32 validation performed at CLI layer - hasher trusts its inputs
     match algo {
         HashAlgorithm::CRC32 => hash_file_encoded::<Crc32>(path, OutputEncoding::U32),
         HashAlgorithm::MD5 => hash_file_encoded::<Md5>(path, encoding),
