@@ -234,7 +234,7 @@ checksum = "0cc23270f6e1808e30a928bdc84dea0b9b4136a8bc82338574f23baf47bbd280"
 
 [[package]]
 name = "hash_rust"
-version = "1.5.2"
+version = "1.6.0"
 dependencies = [
  "anyhow",
  "blake2",
@@ -250,7 +250,6 @@ dependencies = [
  "md-5",
  "pico-args",
  "rayon",
- "readonly",
  "sha1",
  "sha2",
  "sha3",
@@ -452,17 +451,6 @@ checksum = "22e18b0f0062d30d4230b2e85ff77fdfe4326feb054b9783a3460d8435c8ab91"
 dependencies = [
  "crossbeam-deque",
  "crossbeam-utils",
-]
-
-[[package]]
-name = "readonly"
-version = "0.2.13"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f2a62d85ed81ca5305dc544bd42c8804c5060b78ffa5ad3c64b0fb6a8c13d062"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn",
 ]
 
 [[package]]
