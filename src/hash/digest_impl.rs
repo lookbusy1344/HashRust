@@ -18,6 +18,8 @@ fn hash_file<D: Digest>(filename: impl AsRef<str>) -> anyhow::Result<Output<D>> 
     }
 
     let mut file = File::open(filename.as_ref())?;
+    // 32KB is well within typical stack limits (2-8MB) and avoids heap allocation overhead
+    #[allow(clippy::large_stack_arrays)]
     let mut buffer = [0u8; BUFFER_SIZE];
     let mut hasher = D::new();
 
