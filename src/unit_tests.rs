@@ -342,3 +342,304 @@ mod hash_tests {
         assert!(hash.chars().all(|c| c.is_ascii_hexdigit()));
     }
 }
+
+// Glob pattern matching tests (Fix 10)
+mod glob_tests {
+    use super::*;
+    use crate::io::files::get_required_filenames;
+    use std::fs;
+    use tempfile::TempDir;
+
+    fn create_test_directory_structure() -> TempDir {
+        let temp_dir = TempDir::new().expect("Failed to create temp dir");
+        let base_path = temp_dir.path();
+
+        // Create test files
+        fs::write(base_path.join("test1.txt"), b"content1").unwrap();
+        fs::write(base_path.join("test2.txt"), b"content2").unwrap();
+        fs::write(base_path.join("Test3.TXT"), b"content3").unwrap();
+        fs::write(base_path.join("file.md"), b"markdown").unwrap();
+        fs::write(base_path.join("data.json"), b"{}").unwrap();
+
+        // Create a subdirectory with files
+        fs::create_dir(base_path.join("subdir")).unwrap();
+        fs::write(base_path.join("subdir/nested.txt"), b"nested").unwrap();
+
+        temp_dir
+    }
+
+    #[test]
+    fn test_glob_wildcard_star() {
+        let temp_dir = create_test_directory_structure();
+        let base_path = temp_dir.path();
+
+        let pattern = format!("{}/*.txt", base_path.display());
+        let mut config = ConfigSettings::new(
+            false,
+            false,
+            false,
+            true, // case_sensitive
+            false,
+            HashAlgorithm::SHA3_256,
+            OutputEncoding::Hex,
+            None,
+        );
+        config.set_supplied_paths(vec![pattern]);
+
+        let result = get_required_filenames(&config);
+        assert!(result.is_ok());
+
+        let paths = result.unwrap();
+        assert_eq!(paths.len(), 2); // test1.txt and test2.txt (not Test3.TXT)
+    }
+
+    #[test]
+    fn test_glob_case_insensitive() {
+        let temp_dir = create_test_directory_structure();
+        let base_path = temp_dir.path();
+
+        let pattern = format!("{}/*.txt", base_path.display());
+        let mut config = ConfigSettings::new(
+            false,
+            false,
+            false,
+            false, // case_insensitive
+            false,
+            HashAlgorithm::SHA3_256,
+            OutputEncoding::Hex,
+            None,
+        );
+        config.set_supplied_paths(vec![pattern]);
+
+        let result = get_required_filenames(&config);
+        assert!(result.is_ok());
+
+        let paths = result.unwrap();
+        assert_eq!(paths.len(), 3); // test1.txt, test2.txt, and Test3.TXT
+    }
+
+    #[test]
+    fn test_glob_specific_extension() {
+        let temp_dir = create_test_directory_structure();
+        let base_path = temp_dir.path();
+
+        let pattern = format!("{}/*.md", base_path.display());
+        let mut config = ConfigSettings::new(
+            false,
+            false,
+            false,
+            true,
+            false,
+            HashAlgorithm::SHA3_256,
+            OutputEncoding::Hex,
+            None,
+        );
+        config.set_supplied_paths(vec![pattern]);
+
+        let result = get_required_filenames(&config);
+        assert!(result.is_ok());
+
+        let paths = result.unwrap();
+        assert_eq!(paths.len(), 1);
+        assert!(paths[0].ends_with("file.md"));
+    }
+
+    #[test]
+    fn test_glob_no_matches() {
+        let temp_dir = create_test_directory_structure();
+        let base_path = temp_dir.path();
+
+        let pattern = format!("{}/*.xyz", base_path.display());
+        let mut config = ConfigSettings::new(
+            false,
+            false,
+            false,
+            true,
+            false,
+            HashAlgorithm::SHA3_256,
+            OutputEncoding::Hex,
+            None,
+        );
+        config.set_supplied_paths(vec![pattern]);
+
+        let result = get_required_filenames(&config);
+        assert!(result.is_ok());
+
+        let paths = result.unwrap();
+        assert_eq!(paths.len(), 0); // No .xyz files
+    }
+
+    #[test]
+    fn test_literal_file_exists() {
+        let temp_dir = create_test_directory_structure();
+        let base_path = temp_dir.path();
+
+        let literal_path = base_path.join("test1.txt").to_string_lossy().to_string();
+        let mut config = ConfigSettings::new(
+            false,
+            false,
+            false,
+            true,
+            false,
+            HashAlgorithm::SHA3_256,
+            OutputEncoding::Hex,
+            None,
+        );
+        config.set_supplied_paths(vec![literal_path.clone()]);
+
+        let result = get_required_filenames(&config);
+        assert!(result.is_ok());
+
+        let paths = result.unwrap();
+        assert_eq!(paths.len(), 1);
+        assert_eq!(paths[0], literal_path);
+    }
+
+    #[test]
+    fn test_literal_file_not_found() {
+        let temp_dir = create_test_directory_structure();
+        let base_path = temp_dir.path();
+
+        let nonexistent = base_path
+            .join("nonexistent.txt")
+            .to_string_lossy()
+            .to_string();
+        let mut config = ConfigSettings::new(
+            false,
+            false,
+            false,
+            true,
+            false,
+            HashAlgorithm::SHA3_256,
+            OutputEncoding::Hex,
+            None,
+        );
+        config.set_supplied_paths(vec![nonexistent]);
+
+        let result = get_required_filenames(&config);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("File not found"));
+    }
+
+    #[test]
+    fn test_directory_path_rejected() {
+        let temp_dir = create_test_directory_structure();
+        let base_path = temp_dir.path();
+
+        let dir_path = base_path.join("subdir").to_string_lossy().to_string();
+        let mut config = ConfigSettings::new(
+            false,
+            false,
+            false,
+            true,
+            false,
+            HashAlgorithm::SHA3_256,
+            OutputEncoding::Hex,
+            None,
+        );
+        config.set_supplied_paths(vec![dir_path]);
+
+        let result = get_required_filenames(&config);
+        // Should return empty list or error (directory is ignored in non-debug mode)
+        assert!(result.is_ok());
+        let paths = result.unwrap();
+        assert_eq!(paths.len(), 0);
+    }
+
+    #[test]
+    fn test_multiple_patterns() {
+        let temp_dir = create_test_directory_structure();
+        let base_path = temp_dir.path();
+
+        let pattern1 = format!("{}/*.txt", base_path.display());
+        let pattern2 = format!("{}/*.md", base_path.display());
+        let mut config = ConfigSettings::new(
+            false,
+            false,
+            false,
+            true,
+            false,
+            HashAlgorithm::SHA3_256,
+            OutputEncoding::Hex,
+            None,
+        );
+        config.set_supplied_paths(vec![pattern1, pattern2]);
+
+        let result = get_required_filenames(&config);
+        assert!(result.is_ok());
+
+        let paths = result.unwrap();
+        assert_eq!(paths.len(), 3); // 2 .txt files + 1 .md file
+    }
+
+    #[test]
+    fn test_glob_with_limit() {
+        let temp_dir = create_test_directory_structure();
+        let base_path = temp_dir.path();
+
+        let pattern = format!("{}/*", base_path.display());
+        let mut config = ConfigSettings::new(
+            false,
+            false,
+            false,
+            true,
+            false,
+            HashAlgorithm::SHA3_256,
+            OutputEncoding::Hex,
+            Some(2), // Limit to 2 files
+        );
+        config.set_supplied_paths(vec![pattern]);
+
+        let result = get_required_filenames(&config);
+        assert!(result.is_ok());
+
+        let paths = result.unwrap();
+        assert_eq!(paths.len(), 2); // Limited to 2 files
+    }
+
+    #[test]
+    fn test_glob_filters_directories() {
+        let temp_dir = create_test_directory_structure();
+        let base_path = temp_dir.path();
+
+        // Pattern that would match both files and directories
+        let pattern = format!("{}/*", base_path.display());
+        let mut config = ConfigSettings::new(
+            false,
+            false,
+            false,
+            true,
+            false,
+            HashAlgorithm::SHA3_256,
+            OutputEncoding::Hex,
+            None,
+        );
+        config.set_supplied_paths(vec![pattern]);
+
+        let result = get_required_filenames(&config);
+        assert!(result.is_ok());
+
+        let paths = result.unwrap();
+        // Should only include files, not the 'subdir' directory
+        for path in &paths {
+            assert!(!path.ends_with("subdir"));
+        }
+    }
+
+    #[test]
+    fn test_empty_supplied_paths() {
+        // This would normally read from stdin, but we're testing the config behavior
+        let config = ConfigSettings::new(
+            false,
+            false,
+            false,
+            true,
+            false,
+            HashAlgorithm::SHA3_256,
+            OutputEncoding::Hex,
+            None,
+        );
+
+        assert!(config.supplied_paths.is_empty());
+    }
+}
