@@ -18,7 +18,7 @@ fn hash_file<D: Digest>(filename: impl AsRef<str>) -> anyhow::Result<Output<D>> 
     }
 
     let mut file = File::open(filename.as_ref())?;
-    let mut buffer = build_heap_buffer(BUFFER_SIZE);
+    let mut buffer = [0u8; BUFFER_SIZE];
     let mut hasher = D::new();
 
     loop {
@@ -64,9 +64,4 @@ pub fn hash_file_encoded<D: Digest>(
 fn file_size(path: impl AsRef<str>) -> anyhow::Result<u64> {
     let path = Path::new(path.as_ref());
     Ok(path.metadata()?.len())
-}
-
-fn build_heap_buffer<T: Default + Copy>(len: usize) -> Box<[T]> {
-    let vec = vec![T::default(); len];
-    vec.into_boxed_slice()
 }
