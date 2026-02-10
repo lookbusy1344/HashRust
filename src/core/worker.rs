@@ -61,7 +61,7 @@ where
     }
 
     for pathstr in paths {
-        let file_hash = hash_with_progress(config, pathstr.as_ref().to_string(), false);
+        let file_hash = hash_with_progress(config, AsRef::<str>::as_ref(pathstr), false);
 
         match file_hash {
             Ok(basic_hash) => {
@@ -96,7 +96,7 @@ where
         .map(|pathstr| {
             let file_hash = hash_with_progress(
                 config,
-                pathstr.as_ref().to_string(),
+                AsRef::<str>::as_ref(pathstr),
                 overall_progress.is_some(),
             );
 
@@ -127,20 +127,15 @@ where
     }
 }
 
-fn hash_with_progress<S>(
+fn hash_with_progress(
     config: &ConfigSettings,
-    pathstr: S,
+    pathstr: &str,
     suppress_spinner: bool,
-) -> Result<BasicHash>
-where
-    S: AsRef<str> + Display + Clone + Send + 'static,
-{
-    let pathstr_clone = pathstr.clone();
-
+) -> Result<BasicHash> {
     let progress_handle = if config.no_progress || suppress_spinner {
         None
     } else {
-        ProgressManager::create_file_progress(pathstr_clone.clone())
+        ProgressManager::create_file_progress(pathstr.to_string())
     };
 
     let start_time = Instant::now();
@@ -154,7 +149,7 @@ where
     if config.debug_mode && elapsed >= Duration::from_millis(ProgressManager::threshold_millis()) {
         eprintln!(
             "File '{}' took {:.2}s to hash",
-            pathstr_clone,
+            pathstr,
             elapsed.as_secs_f64()
         );
     }
