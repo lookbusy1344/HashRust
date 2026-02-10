@@ -115,8 +115,9 @@ fn test_config_settings_with_paths() {
 
 #[test]
 fn test_basic_hash_display() {
-    let hash = BasicHash("abc123".to_string());
+    let hash = BasicHash::new("abc123".to_string());
     assert_eq!(format!("{hash}"), "abc123");
+    assert_eq!(hash.as_str(), "abc123");
 }
 
 #[test]
@@ -153,7 +154,7 @@ mod hash_tests {
 
         // Precomputed SHA3-256 hash of "hello world"
         assert_eq!(
-            result.unwrap().0,
+            result.unwrap().as_str(),
             "644bcc7e564373040999aac89e7622f3ca71fba1d972fd94a31c3bfbf24e3938"
         );
     }
@@ -168,7 +169,7 @@ mod hash_tests {
 
         // Base64 of SHA3-256 hash of "hello world"
         assert_eq!(
-            result.unwrap().0,
+            result.unwrap().as_str(),
             "ZEvMflZDcwQJmarInnYi88px+6HZcv2Uoxw7+/JOOTg="
         );
     }
@@ -183,7 +184,7 @@ mod hash_tests {
 
         // Base32 of SHA3-256 hash of "hello world"
         assert_eq!(
-            result.unwrap().0,
+            result.unwrap().as_str(),
             "MRF4Y7SWINZQICMZVLEJ45RC6PFHD65B3FZP3FFDDQ57X4SOHE4A===="
         );
     }
@@ -197,7 +198,7 @@ mod hash_tests {
         assert!(result.is_ok());
 
         // Precomputed MD5 hash of "test"
-        assert_eq!(result.unwrap().0, "098f6bcd4621d373cade4e832627b4f6");
+        assert_eq!(result.unwrap().as_str(), "098f6bcd4621d373cade4e832627b4f6");
     }
 
     #[test]
@@ -210,7 +211,7 @@ mod hash_tests {
 
         // Precomputed SHA1 hash of "test"
         assert_eq!(
-            result.unwrap().0,
+            result.unwrap().as_str(),
             "a94a8fe5ccb19ba61c4c0873d391e987982fbbd3"
         );
     }
@@ -225,7 +226,7 @@ mod hash_tests {
 
         // Precomputed SHA2-256 hash of "test"
         assert_eq!(
-            result.unwrap().0,
+            result.unwrap().as_str(),
             "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08"
         );
     }
@@ -239,7 +240,7 @@ mod hash_tests {
         assert!(result.is_ok());
 
         // CRC32 of "test" is 0xD87F7E0C = 3632233996
-        assert_eq!(result.unwrap().0, "3632233996");
+        assert_eq!(result.unwrap().as_str(), "3632233996");
     }
 
     // Note: CRC32/U32 validation is tested at the CLI layer in integration tests
@@ -255,7 +256,7 @@ mod hash_tests {
 
         // SHA3-256 of empty string
         assert_eq!(
-            result.unwrap().0,
+            result.unwrap().as_str(),
             "a7ffc6f8bf1ed76651c14756a061d662f580ff4de43b49fa82d80a4b80f8434a"
         );
     }
@@ -271,7 +272,7 @@ mod hash_tests {
         assert!(result.is_ok());
 
         // Just verify it produces a valid hex hash
-        let hash = result.unwrap().0;
+        let hash = result.unwrap().into_inner();
         assert_eq!(hash.len(), 64); // SHA3-256 produces 32 bytes = 64 hex chars
         assert!(hash.chars().all(|c| c.is_ascii_hexdigit()));
     }
@@ -296,7 +297,7 @@ mod hash_tests {
 
         // Blake2s-256 hash of "test"
         assert_eq!(
-            result.unwrap().0,
+            result.unwrap().as_str(),
             "f308fc02ce9172ad02a7d75800ecfc027109bc67987ea32aba9b8dcc7b10150e"
         );
     }
@@ -310,7 +311,7 @@ mod hash_tests {
         assert!(result.is_ok());
 
         // Just verify it produces a valid 128-char hex hash (64 bytes)
-        let hash = result.unwrap().0;
+        let hash = result.unwrap().into_inner();
         assert_eq!(hash.len(), 128);
         assert!(hash.chars().all(|c| c.is_ascii_hexdigit()));
     }

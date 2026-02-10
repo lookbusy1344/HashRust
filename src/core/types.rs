@@ -53,8 +53,31 @@ pub enum OutputEncoding {
     U32,
 }
 
+/// A hash digest represented as a string.
+///
+/// Provides type-safe wrapping of hash output with proper encapsulation.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct BasicHash(pub String);
+pub struct BasicHash(String);
+
+impl BasicHash {
+    /// Create a new hash from a string representation.
+    #[must_use]
+    pub fn new(hash: String) -> Self {
+        Self(hash)
+    }
+
+    /// Get the hash value as a string slice.
+    #[must_use]
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+
+    /// Convert into the underlying `String`.
+    #[must_use]
+    pub fn into_inner(self) -> String {
+        self.0
+    }
+}
 
 impl fmt::Display for BasicHash {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {

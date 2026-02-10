@@ -46,7 +46,7 @@ pub fn hash_file_encoded<D: Digest>(
 ) -> anyhow::Result<BasicHash> {
     let h = hash_file::<D>(filename)?;
 
-    Ok(BasicHash(match encoding {
+    Ok(BasicHash::new(match encoding {
         OutputEncoding::Hex => hex::encode(h),
         OutputEncoding::Base64 => BASE64.encode(&h),
         OutputEncoding::Base32 => BASE32.encode(&h),
