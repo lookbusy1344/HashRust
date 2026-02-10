@@ -8,19 +8,6 @@ use generic_array::typenum::U4;
 #[derive(Clone, Default)]
 pub struct Crc32(Hasher);
 
-#[allow(dead_code)]
-impl Crc32 {
-    #[inline]
-    pub fn new() -> Self {
-        Self(Hasher::new())
-    }
-
-    #[inline]
-    pub fn from_state(state: u32) -> Self {
-        Self(Hasher::new_with_initial(state))
-    }
-}
-
 impl HashMarker for Crc32 {}
 
 impl OutputSizeUser for Crc32 {
