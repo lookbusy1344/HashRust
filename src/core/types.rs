@@ -68,12 +68,14 @@ impl BasicHash {
 
     /// Get the hash value as a string slice.
     #[must_use]
+    #[allow(dead_code)]
     pub fn as_str(&self) -> &str {
         &self.0
     }
 
     /// Convert into the underlying `String`.
     #[must_use]
+    #[allow(dead_code)]
     pub fn into_inner(self) -> String {
         self.0
     }
