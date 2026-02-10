@@ -38,28 +38,22 @@ fn test_parse_hash_algorithm_invalid() {
 fn test_parse_hash_encoding_valid() {
     assert_eq!(
         parse_hash_encoding(Some("Hex")).unwrap(),
-        OutputEncoding::Hex
+        Some(OutputEncoding::Hex)
     );
     assert_eq!(
         parse_hash_encoding(Some("Base64")).unwrap(),
-        OutputEncoding::Base64
+        Some(OutputEncoding::Base64)
     );
     assert_eq!(
         parse_hash_encoding(Some("Base32")).unwrap(),
-        OutputEncoding::Base32
+        Some(OutputEncoding::Base32)
     );
 }
 
 #[test]
 fn test_parse_hash_encoding_default() {
-    assert_eq!(
-        parse_hash_encoding(None).unwrap(),
-        OutputEncoding::Unspecified
-    );
-    assert_eq!(
-        parse_hash_encoding(Some("")).unwrap(),
-        OutputEncoding::Unspecified
-    );
+    assert_eq!(parse_hash_encoding(None).unwrap(), None);
+    assert_eq!(parse_hash_encoding(Some("")).unwrap(), None);
 }
 
 #[test]

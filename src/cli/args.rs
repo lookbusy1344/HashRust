@@ -16,13 +16,14 @@ pub fn process_command_line(mut pargs: Arguments) -> Result<ConfigSettings> {
     })?;
 
     let encoding_str: Option<String> = pargs.opt_value_from_str(["-e", "--encoding"])?;
-    let encoding = parse_hash_encoding(encoding_str.as_deref())
+    let encoding_opt = parse_hash_encoding(encoding_str.as_deref())
         .map_err(|_| anyhow!("Encoding can be: Hex, Base64, Base32. Default is Hex",))?;
 
-    let encoding = match encoding {
-        OutputEncoding::Unspecified if algo == HashAlgorithm::CRC32 => OutputEncoding::U32,
-        OutputEncoding::Unspecified => OutputEncoding::Hex,
-        other => other,
+    // Resolve Option<OutputEncoding> to concrete encoding based on algorithm
+    let encoding = match encoding_opt {
+        Some(enc) => enc,
+        None if algo == HashAlgorithm::CRC32 => OutputEncoding::U32,
+        None => OutputEncoding::Hex,
     };
 
     if (algo == HashAlgorithm::CRC32 && encoding != OutputEncoding::U32)
@@ -63,10 +64,10 @@ pub fn parse_hash_algorithm(algorithm: Option<&str>) -> Result<HashAlgorithm, st
     }
 }
 
-pub fn parse_hash_encoding(encoding: Option<&str>) -> Result<OutputEncoding, strum::ParseError> {
+pub fn parse_hash_encoding(encoding: Option<&str>) -> Result<Option<OutputEncoding>, strum::ParseError> {
     match encoding {
-        Some(enc_str) if !enc_str.is_empty() => OutputEncoding::from_str(enc_str),
-        _ => Ok(OutputEncoding::Unspecified),
+        Some(enc_str) if !enc_str.is_empty() => Ok(Some(OutputEncoding::from_str(enc_str)?)),
+        _ => Ok(None),
     }
 }
 
