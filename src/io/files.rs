@@ -5,11 +5,6 @@ use anyhow::Result;
 
 use crate::cli::config::ConfigSettings;
 
-pub fn file_exists(path: impl AsRef<Path>) -> bool {
-    let path_ref = path.as_ref();
-    path_ref.exists() && path_ref.is_file()
-}
-
 pub fn get_required_filenames(config: &ConfigSettings) -> Result<Vec<String>> {
     let mut paths = if config.supplied_paths.is_empty() {
         get_paths_from_stdin(config)?
@@ -31,7 +26,7 @@ fn get_paths_from_stdin(config: &ConfigSettings) -> Result<Vec<String>> {
     Ok(lines
         .into_iter()
         .filter(|line| {
-            let is_file = file_exists(line);
+            let is_file = Path::new(line).is_file();
             if !is_file && config.debug_mode {
                 eprintln!("Not a file: {line}");
             }
@@ -62,7 +57,7 @@ fn get_paths_matching_glob(config: &ConfigSettings) -> Result<Vec<String>> {
                     .collect();
 
                 if glob_matches.is_empty() {
-                    if file_exists(pattern) {
+                    if Path::new(pattern).is_file() {
                         result.push(pattern.clone());
                     } else if !pattern.contains(['*', '?', '[', ']']) {
                         let path = std::path::Path::new(pattern);
@@ -80,7 +75,7 @@ fn get_paths_matching_glob(config: &ConfigSettings) -> Result<Vec<String>> {
             }
             Err(_) => {
                 // If glob fails (e.g. invalid pattern), treat as literal file
-                if file_exists(pattern) {
+                if Path::new(pattern).is_file() {
                     result.push(pattern.clone());
                 } else {
                     return Err(anyhow::anyhow!("File not found or invalid glob: {pattern}"));
