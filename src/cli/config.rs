@@ -14,34 +14,6 @@ pub struct ConfigSettings {
     pub supplied_paths: Vec<String>,
 }
 
-impl ConfigSettings {
-    #[allow(clippy::fn_params_excessive_bools)]
-    #[allow(clippy::too_many_arguments)]
-    pub fn new(
-        debug_mode: bool,
-        exclude_fn: bool,
-        single_thread: bool,
-        case_sensitive: bool,
-        no_progress: bool,
-        algorithm: HashAlgorithm,
-        encoding: OutputEncoding,
-        limit_num: Option<usize>,
-        supplied_paths: Vec<String>,
-    ) -> Self {
-        Self {
-            debug_mode,
-            exclude_fn,
-            single_thread,
-            case_sensitive,
-            no_progress,
-            algorithm,
-            encoding,
-            limit_num,
-            supplied_paths,
-        }
-    }
-}
-
 pub const HELP: &str = "\
 USAGE:
     hash_rust [flags] [options] file glob

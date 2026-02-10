@@ -74,17 +74,17 @@ fn test_hash_algorithm_from_str() {
 
 #[test]
 fn test_config_settings_new() {
-    let config = ConfigSettings::new(
-        true,  // debug_mode
-        false, // exclude_fn
-        false, // single_thread
-        true,  // case_sensitive
-        false, // no_progress
-        HashAlgorithm::SHA3_256,
-        OutputEncoding::Hex,
-        Some(100),
-        Vec::new(), // supplied_paths
-    );
+    let config = ConfigSettings {
+        debug_mode: true,
+        exclude_fn: false,
+        single_thread: false,
+        case_sensitive: true,
+        no_progress: false,
+        algorithm: HashAlgorithm::SHA3_256,
+        encoding: OutputEncoding::Hex,
+        limit_num: Some(100),
+        supplied_paths: Vec::new(),
+    };
 
     assert!(config.debug_mode);
     assert!(!config.exclude_fn);
@@ -98,17 +98,17 @@ fn test_config_settings_new() {
 #[test]
 fn test_config_settings_with_paths() {
     let paths = vec!["file1.txt".to_string(), "file2.txt".to_string()];
-    let config = ConfigSettings::new(
-        false,
-        false,
-        false,
-        false,
-        false, // no_progress
-        HashAlgorithm::MD5,
-        OutputEncoding::Base64,
-        None,
-        paths.clone(), // supplied_paths
-    );
+    let config = ConfigSettings {
+        debug_mode: false,
+        exclude_fn: false,
+        single_thread: false,
+        case_sensitive: false,
+        no_progress: false,
+        algorithm: HashAlgorithm::MD5,
+        encoding: OutputEncoding::Base64,
+        limit_num: None,
+        supplied_paths: paths.clone(),
+    };
 
     assert_eq!(config.supplied_paths, paths);
 }
@@ -347,17 +347,17 @@ mod glob_tests {
         let base_path = temp_dir.path();
 
         let pattern = format!("{}/*.txt", base_path.display());
-        let config = ConfigSettings::new(
-            false,
-            false,
-            false,
-            true, // case_sensitive
-            false,
-            HashAlgorithm::SHA3_256,
-            OutputEncoding::Hex,
-            None,
-            vec![pattern],
-        );
+        let config = ConfigSettings {
+            debug_mode: false,
+            exclude_fn: false,
+            single_thread: false,
+            case_sensitive: true,
+            no_progress: false,
+            algorithm: HashAlgorithm::SHA3_256,
+            encoding: OutputEncoding::Hex,
+            limit_num: None,
+            supplied_paths: vec![pattern],
+        };
 
         let result = get_required_filenames(&config);
         assert!(result.is_ok());
@@ -372,17 +372,17 @@ mod glob_tests {
         let base_path = temp_dir.path();
 
         let pattern = format!("{}/*.txt", base_path.display());
-        let config = ConfigSettings::new(
-            false,
-            false,
-            false,
-            false, // case_insensitive
-            false,
-            HashAlgorithm::SHA3_256,
-            OutputEncoding::Hex,
-            None,
-            vec![pattern],
-        );
+        let config = ConfigSettings {
+            debug_mode: false,
+            exclude_fn: false,
+            single_thread: false,
+            case_sensitive: false,
+            no_progress: false,
+            algorithm: HashAlgorithm::SHA3_256,
+            encoding: OutputEncoding::Hex,
+            limit_num: None,
+            supplied_paths: vec![pattern],
+        };
 
         let result = get_required_filenames(&config);
         assert!(result.is_ok());
@@ -397,17 +397,17 @@ mod glob_tests {
         let base_path = temp_dir.path();
 
         let pattern = format!("{}/*.md", base_path.display());
-        let config = ConfigSettings::new(
-            false,
-            false,
-            false,
-            true,
-            false,
-            HashAlgorithm::SHA3_256,
-            OutputEncoding::Hex,
-            None,
-            vec![pattern],
-        );
+        let config = ConfigSettings {
+            debug_mode: false,
+            exclude_fn: false,
+            single_thread: false,
+            case_sensitive: true,
+            no_progress: false,
+            algorithm: HashAlgorithm::SHA3_256,
+            encoding: OutputEncoding::Hex,
+            limit_num: None,
+            supplied_paths: vec![pattern],
+        };
 
         let result = get_required_filenames(&config);
         assert!(result.is_ok());
@@ -423,17 +423,17 @@ mod glob_tests {
         let base_path = temp_dir.path();
 
         let pattern = format!("{}/*.xyz", base_path.display());
-        let config = ConfigSettings::new(
-            false,
-            false,
-            false,
-            true,
-            false,
-            HashAlgorithm::SHA3_256,
-            OutputEncoding::Hex,
-            None,
-            vec![pattern],
-        );
+        let config = ConfigSettings {
+            debug_mode: false,
+            exclude_fn: false,
+            single_thread: false,
+            case_sensitive: true,
+            no_progress: false,
+            algorithm: HashAlgorithm::SHA3_256,
+            encoding: OutputEncoding::Hex,
+            limit_num: None,
+            supplied_paths: vec![pattern],
+        };
 
         let result = get_required_filenames(&config);
         assert!(result.is_ok());
@@ -448,17 +448,17 @@ mod glob_tests {
         let base_path = temp_dir.path();
 
         let literal_path = base_path.join("test1.txt").to_string_lossy().to_string();
-        let config = ConfigSettings::new(
-            false,
-            false,
-            false,
-            true,
-            false,
-            HashAlgorithm::SHA3_256,
-            OutputEncoding::Hex,
-            None,
-            vec![literal_path.clone()],
-        );
+        let config = ConfigSettings {
+            debug_mode: false,
+            exclude_fn: false,
+            single_thread: false,
+            case_sensitive: true,
+            no_progress: false,
+            algorithm: HashAlgorithm::SHA3_256,
+            encoding: OutputEncoding::Hex,
+            limit_num: None,
+            supplied_paths: vec![literal_path.clone()],
+        };
 
         let result = get_required_filenames(&config);
         assert!(result.is_ok());
@@ -477,17 +477,17 @@ mod glob_tests {
             .join("nonexistent.txt")
             .to_string_lossy()
             .to_string();
-        let config = ConfigSettings::new(
-            false,
-            false,
-            false,
-            true,
-            false,
-            HashAlgorithm::SHA3_256,
-            OutputEncoding::Hex,
-            None,
-            vec![nonexistent],
-        );
+        let config = ConfigSettings {
+            debug_mode: false,
+            exclude_fn: false,
+            single_thread: false,
+            case_sensitive: true,
+            no_progress: false,
+            algorithm: HashAlgorithm::SHA3_256,
+            encoding: OutputEncoding::Hex,
+            limit_num: None,
+            supplied_paths: vec![nonexistent],
+        };
 
         let result = get_required_filenames(&config);
         assert!(result.is_err());
@@ -500,17 +500,17 @@ mod glob_tests {
         let base_path = temp_dir.path();
 
         let dir_path = base_path.join("subdir").to_string_lossy().to_string();
-        let config = ConfigSettings::new(
-            false,
-            false,
-            false,
-            true,
-            false,
-            HashAlgorithm::SHA3_256,
-            OutputEncoding::Hex,
-            None,
-            vec![dir_path],
-        );
+        let config = ConfigSettings {
+            debug_mode: false,
+            exclude_fn: false,
+            single_thread: false,
+            case_sensitive: true,
+            no_progress: false,
+            algorithm: HashAlgorithm::SHA3_256,
+            encoding: OutputEncoding::Hex,
+            limit_num: None,
+            supplied_paths: vec![dir_path],
+        };
 
         let result = get_required_filenames(&config);
         // Should return empty list or error (directory is ignored in non-debug mode)
@@ -526,17 +526,17 @@ mod glob_tests {
 
         let pattern1 = format!("{}/*.txt", base_path.display());
         let pattern2 = format!("{}/*.md", base_path.display());
-        let config = ConfigSettings::new(
-            false,
-            false,
-            false,
-            true,
-            false,
-            HashAlgorithm::SHA3_256,
-            OutputEncoding::Hex,
-            None,
-            vec![pattern1, pattern2],
-        );
+        let config = ConfigSettings {
+            debug_mode: false,
+            exclude_fn: false,
+            single_thread: false,
+            case_sensitive: true,
+            no_progress: false,
+            algorithm: HashAlgorithm::SHA3_256,
+            encoding: OutputEncoding::Hex,
+            limit_num: None,
+            supplied_paths: vec![pattern1, pattern2],
+        };
 
         let result = get_required_filenames(&config);
         assert!(result.is_ok());
@@ -551,17 +551,17 @@ mod glob_tests {
         let base_path = temp_dir.path();
 
         let pattern = format!("{}/*", base_path.display());
-        let config = ConfigSettings::new(
-            false,
-            false,
-            false,
-            true,
-            false,
-            HashAlgorithm::SHA3_256,
-            OutputEncoding::Hex,
-            Some(2), // Limit to 2 files
-            vec![pattern],
-        );
+        let config = ConfigSettings {
+            debug_mode: false,
+            exclude_fn: false,
+            single_thread: false,
+            case_sensitive: true,
+            no_progress: false,
+            algorithm: HashAlgorithm::SHA3_256,
+            encoding: OutputEncoding::Hex,
+            limit_num: Some(2),
+            supplied_paths: vec![pattern],
+        };
 
         let result = get_required_filenames(&config);
         assert!(result.is_ok());
@@ -577,17 +577,17 @@ mod glob_tests {
 
         // Pattern that would match both files and directories
         let pattern = format!("{}/*", base_path.display());
-        let config = ConfigSettings::new(
-            false,
-            false,
-            false,
-            true,
-            false,
-            HashAlgorithm::SHA3_256,
-            OutputEncoding::Hex,
-            None,
-            vec![pattern],
-        );
+        let config = ConfigSettings {
+            debug_mode: false,
+            exclude_fn: false,
+            single_thread: false,
+            case_sensitive: true,
+            no_progress: false,
+            algorithm: HashAlgorithm::SHA3_256,
+            encoding: OutputEncoding::Hex,
+            limit_num: None,
+            supplied_paths: vec![pattern],
+        };
 
         let result = get_required_filenames(&config);
         assert!(result.is_ok());
@@ -602,17 +602,17 @@ mod glob_tests {
     #[test]
     fn test_empty_supplied_paths() {
         // This would normally read from stdin, but we're testing the config behavior
-        let config = ConfigSettings::new(
-            false,
-            false,
-            false,
-            true,
-            false,
-            HashAlgorithm::SHA3_256,
-            OutputEncoding::Hex,
-            None,
-            Vec::new(), // supplied_paths
-        );
+        let config = ConfigSettings {
+            debug_mode: false,
+            exclude_fn: false,
+            single_thread: false,
+            case_sensitive: true,
+            no_progress: false,
+            algorithm: HashAlgorithm::SHA3_256,
+            encoding: OutputEncoding::Hex,
+            limit_num: None,
+            supplied_paths: Vec::new(),
+        };
 
         assert!(config.supplied_paths.is_empty());
     }

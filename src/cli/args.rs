@@ -49,17 +49,17 @@ pub fn process_command_line(mut pargs: Arguments) -> Result<ConfigSettings> {
         .map(|arg| arg.to_string_lossy().to_string())
         .collect();
 
-    let config = ConfigSettings::new(
+    let config = ConfigSettings {
         debug_mode,
         exclude_fn,
         single_thread,
         case_sensitive,
         no_progress,
-        algo,
+        algorithm: algo,
         encoding,
         limit_num,
         supplied_paths,
-    );
+    };
 
     Ok(config)
 }
