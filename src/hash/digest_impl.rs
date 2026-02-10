@@ -34,10 +34,7 @@ fn hash_file<D: Digest>(filename: impl AsRef<str>) -> anyhow::Result<Output<D>> 
 
 fn hash_file_whole<D: Digest>(filename: impl AsRef<str>) -> anyhow::Result<Output<D>> {
     let data = std::fs::read(filename.as_ref())?;
-    let mut hasher = D::new();
-    hasher.update(&data);
-
-    Ok(hasher.finalize())
+    Ok(D::digest(&data))
 }
 
 #[inline]
