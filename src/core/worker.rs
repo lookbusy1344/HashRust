@@ -8,7 +8,7 @@ use crate::cli::config::ConfigSettings;
 use crate::core::types::BasicHash;
 use crate::hash::algorithms::call_hasher;
 use crate::io::files::get_required_filenames;
-use crate::progress::ProgressManager;
+use crate::progress::ProgressCoordinator;
 
 pub fn worker_func(config: &ConfigSettings) -> Result<()> {
     if config.debug_mode {
@@ -60,8 +60,15 @@ where
         eprintln!("Algorithm: {:?}", config.algorithm);
     }
 
+    let coordinator = if config.no_progress {
+        None
+    } else {
+        Some(ProgressCoordinator::new())
+    };
+
     for pathstr in paths {
-        let file_hash = hash_with_progress(config, AsRef::<str>::as_ref(pathstr), false);
+        let file_hash =
+            hash_with_progress(config, AsRef::<str>::as_ref(pathstr), coordinator.as_ref());
 
         match file_hash {
             Ok(basic_hash) => {
@@ -85,11 +92,15 @@ where
         eprintln!("Algorithm: {:?}", config.algorithm);
     }
 
-    let overall_progress = if config.no_progress {
+    let coordinator = if config.no_progress {
         None
     } else {
-        ProgressManager::create_overall_progress(paths.len())
+        Some(ProgressCoordinator::new())
     };
+
+    let overall_progress = coordinator
+        .as_ref()
+        .and_then(|c| c.create_overall_progress(paths.len()));
 
     let results: Vec<_> = paths
         .par_iter()
@@ -97,7 +108,11 @@ where
             let file_hash = hash_with_progress(
                 config,
                 AsRef::<str>::as_ref(pathstr),
-                overall_progress.is_some(),
+                if overall_progress.is_some() {
+                    None
+                } else {
+                    coordinator.as_ref()
+                },
             );
 
             if let Some(ref pb) = overall_progress {
@@ -130,23 +145,24 @@ where
 fn hash_with_progress(
     config: &ConfigSettings,
     pathstr: &str,
-    suppress_spinner: bool,
+    coordinator: Option<&ProgressCoordinator>,
 ) -> Result<BasicHash> {
-    let progress_handle = if config.no_progress || suppress_spinner {
-        None
-    } else {
-        ProgressManager::create_file_progress(pathstr.to_string())
-    };
+    // Create spinner if progress is enabled
+    // With MultiProgress, fast operations will just flash briefly which is acceptable
+    let spinner = coordinator.map(|coord| coord.create_spinner(pathstr));
 
     let start_time = Instant::now();
     let result = call_hasher(config.algorithm, config.encoding, pathstr);
     let elapsed = start_time.elapsed();
 
-    if let Some(handle) = progress_handle {
-        handle.finish(config.debug_mode);
+    // Clean up spinner
+    if let Some(pb) = spinner {
+        pb.finish_and_clear();
     }
 
-    if config.debug_mode && elapsed >= Duration::from_millis(ProgressManager::threshold_millis()) {
+    if config.debug_mode
+        && elapsed >= Duration::from_millis(ProgressCoordinator::threshold_millis())
+    {
         eprintln!(
             "File '{}' took {:.2}s to hash",
             pathstr,
