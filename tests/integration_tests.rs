@@ -295,14 +295,22 @@ fn test_multi_file_parallel_hashing() {
     let lines: Vec<_> = stdout.lines().filter(|l| !l.is_empty()).collect();
     assert_eq!(lines.len(), 5, "Should have output for all 5 files");
 
-    // Verify each line contains a hash and filename
+    // Verify each line starts with a 64-char SHA3-256 hex hash followed by a space and path.
+    // Using splitn(2) rather than split_whitespace so paths containing spaces are handled correctly.
     for (i, line) in lines.iter().enumerate() {
-        assert!(line.len() > 64, "Line {i} should contain hash + filename");
-        // Verify output is not interleaved - each line should be a complete hash + path
-        assert!(
-            line.split_whitespace().count() == 2,
-            "Line {i} should have exactly 2 space-separated parts (hash and path)"
+        let mut parts = line.splitn(2, ' ');
+        let hash = parts.next().unwrap_or("");
+        let path = parts.next().unwrap_or("");
+        assert_eq!(
+            hash.len(),
+            64,
+            "Line {i} hash should be 64 hex chars, got: {hash}"
         );
+        assert!(
+            hash.chars().all(|c| c.is_ascii_hexdigit()),
+            "Line {i} hash should be hex, got: {hash}"
+        );
+        assert!(!path.is_empty(), "Line {i} should include a file path");
     }
 }
 
@@ -352,10 +360,10 @@ fn test_stdin_file_paths() {
         "Should have output for all 3 files from stdin"
     );
 
-    // Verify each output line contains a hash
+    // Verify each output line starts with a hash followed by a path
     for line in lines {
         assert!(
-            line.split_whitespace().count() == 2,
+            line.splitn(2, ' ').count() == 2,
             "Each line should have hash and path"
         );
     }
