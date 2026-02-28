@@ -1,4 +1,5 @@
 use std::ffi::OsString;
+use std::io::Write;
 use std::str::FromStr;
 
 use anyhow::{Result, anyhow};
@@ -80,16 +81,17 @@ pub fn parse_hash_encoding(
     }
 }
 
-pub fn show_help(longform: bool) {
-    println!(
+pub fn show_help(longform: bool, out: &mut dyn Write) {
+    let _ = writeln!(
+        out,
         "File hasher for various algorithms. Version {} ({})",
         VERSION.unwrap_or("?"),
         GIT_VERSION_SHORT
     );
     if longform {
-        println!("{HELP}");
+        let _ = writeln!(out, "{HELP}");
     }
-    println!("Default algorithm is {DEFAULT_HASH:?}");
+    let _ = writeln!(out, "Default algorithm is {DEFAULT_HASH:?}");
 }
 
 fn args_finished(args: Arguments) -> Result<Vec<OsString>> {

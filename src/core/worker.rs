@@ -42,7 +42,7 @@ pub fn worker_func(config: &ConfigSettings) -> Result<()> {
 }
 
 fn show_initial_info(config: &ConfigSettings) {
-    crate::cli::args::show_help(false);
+    crate::cli::args::show_help(false, &mut std::io::stderr());
     eprintln!();
     eprintln!("Config: {config:?}");
     if config.supplied_paths.is_empty() {

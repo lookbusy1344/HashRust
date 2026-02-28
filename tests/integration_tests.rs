@@ -425,3 +425,35 @@ fn test_unreadable_file_exits_nonzero() {
         "Should exit non-zero when a file cannot be read"
     );
 }
+
+#[test]
+fn test_error_help_goes_to_stderr_not_stdout() {
+    // When a configuration error occurs (invalid algorithm), help text must go to
+    // stderr so that stdout stays clean for piped consumers.
+    let temp_file = create_temp_file("test");
+
+    let output = Command::new("cargo")
+        .args([
+            "run",
+            "--",
+            "-a",
+            "INVALID_ALGORITHM",
+            temp_file.path().to_str().unwrap(),
+        ])
+        .output()
+        .expect("Failed to execute hash_rust");
+
+    assert!(!output.status.success());
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let stderr = String::from_utf8_lossy(&output.stderr);
+
+    assert!(
+        !stdout.contains("USAGE"),
+        "Help text must not appear on stdout, got: {stdout}"
+    );
+    assert!(
+        stderr.contains("USAGE"),
+        "Help text must appear on stderr, got: {stderr}"
+    );
+}
