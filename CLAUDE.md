@@ -17,9 +17,8 @@ HashRust is a CLI file hashing utility written in Rust that supports multiple ha
 - `cargo test --test integration_tests` - Run integration tests
 
 ### Code Quality
-- `cargo check` - Fast compilation check without producing binary
-- `cargo clippy` - Run linter with standard warnings
 - `cargo clippy -- -D clippy::all -D clippy::pedantic` - Run pedantic clippy checks (matches .vscode/tasks.json)
+- `RUSTFLAGS="-F unsafe_code" cargo build` - Verify no unsafe code (belt-and-braces alongside `#![forbid(unsafe_code)]`)
 - `cargo fmt` - Format code
 
 ### Running
