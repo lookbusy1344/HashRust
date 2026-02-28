@@ -17,8 +17,8 @@ fn main() -> Result<()> {
     let result = worker_main();
 
     if let Err(e) = result {
-        show_help(true);
-        println!();
+        show_help(true, &mut std::io::stderr());
+        eprintln!();
         return Err(e);
     }
 
@@ -29,7 +29,7 @@ fn worker_main() -> Result<()> {
     let mut pargs = Arguments::from_env();
 
     if pargs.contains(["-h", "--help"]) {
-        show_help(true);
+        show_help(true, &mut std::io::stdout());
         return Ok(());
     }
 

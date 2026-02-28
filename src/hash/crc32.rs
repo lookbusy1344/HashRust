@@ -1,5 +1,3 @@
-use std::io::Write;
-
 use crc32fast::Hasher;
 pub use digest::Digest;
 use digest::{FixedOutput, HashMarker, Output, OutputSizeUser, Reset, Update};
@@ -34,18 +32,5 @@ impl Reset for Crc32 {
     #[inline]
     fn reset(&mut self) {
         self.0.reset();
-    }
-}
-
-impl Write for Crc32 {
-    #[inline]
-    fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
-        self.0.update(buf);
-        Ok(buf.len())
-    }
-
-    #[inline]
-    fn flush(&mut self) -> std::io::Result<()> {
-        Ok(())
     }
 }

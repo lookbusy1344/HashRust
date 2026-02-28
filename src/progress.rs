@@ -8,7 +8,7 @@ use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use std::sync::Arc;
 use std::time::Duration;
 
-const PROGRESS_THRESHOLD_MILLIS: u64 = 200;
+pub const PROGRESS_THRESHOLD_MILLIS: u64 = 200;
 
 /// Coordinator for all progress indication
 ///
@@ -63,14 +63,6 @@ impl ProgressCoordinator {
         pb.set_message(pathstr.to_string());
         pb.enable_steady_tick(Duration::from_millis(350));
         pb
-    }
-
-    /// Get the progress threshold in milliseconds
-    ///
-    /// Operations faster than this threshold should not display progress indication
-    /// to avoid visual flashing.
-    pub fn threshold_millis() -> u64 {
-        PROGRESS_THRESHOLD_MILLIS
     }
 }
 

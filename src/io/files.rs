@@ -7,7 +7,7 @@ use crate::cli::config::ConfigSettings;
 
 pub fn get_required_filenames(config: &ConfigSettings) -> Result<Vec<String>> {
     let mut paths = if config.supplied_paths.is_empty() {
-        get_paths_from_stdin(config)?
+        get_paths_from_stdin(config)
     } else {
         get_paths_matching_glob(config)?
     };
@@ -19,20 +19,27 @@ pub fn get_required_filenames(config: &ConfigSettings) -> Result<Vec<String>> {
     Ok(paths)
 }
 
-fn get_paths_from_stdin(config: &ConfigSettings) -> Result<Vec<String>> {
+fn get_paths_from_stdin(config: &ConfigSettings) -> Vec<String> {
     let stdin = io::stdin();
-    let lines = stdin.lock().lines().collect::<Result<Vec<String>, _>>()?;
-
-    Ok(lines
-        .into_iter()
-        .filter(|line| {
-            let is_file = Path::new(line).is_file();
-            if !is_file && config.debug_mode {
-                eprintln!("Not a file: {line}");
+    stdin
+        .lock()
+        .lines()
+        .filter_map(|line_result| match line_result {
+            Ok(line) => {
+                let is_file = Path::new(&line).is_file();
+                if !is_file && config.debug_mode {
+                    eprintln!("Not a file: {line}");
+                }
+                is_file.then_some(line)
             }
-            is_file
+            Err(e) => {
+                if config.debug_mode {
+                    eprintln!("Skipping unreadable stdin line: {e}");
+                }
+                None
+            }
         })
-        .collect())
+        .collect()
 }
 
 fn get_paths_matching_glob(config: &ConfigSettings) -> Result<Vec<String>> {

@@ -28,17 +28,21 @@ pub fn worker_func(config: &ConfigSettings) -> Result<()> {
         eprintln!("Files to hash: {paths:?}");
     }
 
-    if config.single_thread || paths.len() == 1 {
-        file_hashes_st(config, &paths);
+    let had_error = if config.single_thread || paths.len() == 1 {
+        file_hashes_st(config, &paths)
     } else {
-        file_hashes_mt(config, &paths);
+        file_hashes_mt(config, &paths)
+    };
+
+    if had_error {
+        std::process::exit(1);
     }
 
     Ok(())
 }
 
 fn show_initial_info(config: &ConfigSettings) {
-    crate::cli::args::show_help(false);
+    crate::cli::args::show_help(false, &mut std::io::stderr());
     eprintln!();
     eprintln!("Config: {config:?}");
     if config.supplied_paths.is_empty() {
@@ -51,7 +55,7 @@ fn show_initial_info(config: &ConfigSettings) {
     }
 }
 
-fn file_hashes_st<S>(config: &ConfigSettings, paths: &[S])
+fn file_hashes_st<S>(config: &ConfigSettings, paths: &[S]) -> bool
 where
     S: AsRef<str> + Display + Send + Sync,
 {
@@ -66,6 +70,8 @@ where
         Some(ProgressCoordinator::new())
     };
 
+    let mut had_error = false;
+
     for pathstr in paths {
         let file_hash =
             hash_with_progress(config, AsRef::<str>::as_ref(pathstr), coordinator.as_ref());
@@ -78,12 +84,17 @@ where
                     println!("{basic_hash} {pathstr}");
                 }
             }
-            Err(e) => eprintln!("File error for '{pathstr}': {e}"),
+            Err(e) => {
+                eprintln!("File error for '{pathstr}': {e}");
+                had_error = true;
+            }
         }
     }
+
+    had_error
 }
 
-fn file_hashes_mt<S>(config: &ConfigSettings, paths: &[S])
+fn file_hashes_mt<S>(config: &ConfigSettings, paths: &[S]) -> bool
 where
     S: AsRef<str> + Sync + Display,
 {
@@ -127,6 +138,8 @@ where
         pb.finish_with_message("Complete!");
     }
 
+    let mut had_error = false;
+
     for (pathstr, file_hash) in results {
         match file_hash {
             Ok(basic_hash) => {
@@ -137,9 +150,14 @@ where
                 }
             }
 
-            Err(e) => eprintln!("File error for '{pathstr}': {e}"),
+            Err(e) => {
+                eprintln!("File error for '{pathstr}': {e}");
+                had_error = true;
+            }
         }
     }
+
+    had_error
 }
 
 fn hash_with_progress(
@@ -161,7 +179,7 @@ fn hash_with_progress(
     }
 
     if config.debug_mode
-        && elapsed >= Duration::from_millis(ProgressCoordinator::threshold_millis())
+        && elapsed >= Duration::from_millis(crate::progress::PROGRESS_THRESHOLD_MILLIS)
     {
         eprintln!(
             "File '{}' took {:.2}s to hash",

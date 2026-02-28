@@ -599,22 +599,4 @@ mod glob_tests {
             assert!(!path.ends_with("subdir"));
         }
     }
-
-    #[test]
-    fn test_empty_supplied_paths() {
-        // This would normally read from stdin, but we're testing the config behavior
-        let config = ConfigSettings {
-            debug_mode: false,
-            exclude_fn: false,
-            single_thread: false,
-            case_sensitive: true,
-            no_progress: false,
-            algorithm: HashAlgorithm::SHA3_256,
-            encoding: OutputEncoding::Hex,
-            limit_num: None,
-            supplied_paths: Vec::new(),
-        };
-
-        assert!(config.supplied_paths.is_empty());
-    }
 }
