@@ -20,7 +20,7 @@ fn test_sha3_256_hash() {
 
     // Run the hash_rust binary with SHA3-256 (default)
     let output = Command::new("cargo")
-        .args(&["run", "--", test_path.to_str().unwrap()])
+        .args(["run", "--", test_path.to_str().unwrap()])
         .output()
         .expect("Failed to execute hash_rust");
 
@@ -40,7 +40,7 @@ fn test_md5_hash() {
     let test_path = test_file.path();
 
     let output = Command::new("cargo")
-        .args(&["run", "--", "-a", "MD5", test_path.to_str().unwrap()])
+        .args(["run", "--", "-a", "MD5", test_path.to_str().unwrap()])
         .output()
         .expect("Failed to execute hash_rust");
 
@@ -58,7 +58,7 @@ fn test_crc32_hash() {
     let test_path = test_file.path();
 
     let output = Command::new("cargo")
-        .args(&["run", "--", "-a", "CRC32", test_path.to_str().unwrap()])
+        .args(["run", "--", "-a", "CRC32", test_path.to_str().unwrap()])
         .output()
         .expect("Failed to execute hash_rust");
 
@@ -69,6 +69,9 @@ fn test_crc32_hash() {
     assert!(stdout.contains("3632233996"));
 }
 
+// SHA3-256 hex output is 64 characters; the line must be at least that long.
+const MIN_HASH_LENGTH: usize = 64;
+
 #[test]
 fn test_exclude_filenames() {
     let test_content = "test";
@@ -76,7 +79,7 @@ fn test_exclude_filenames() {
     let test_path = test_file.path();
 
     let output = Command::new("cargo")
-        .args(&["run", "--", "-x", test_path.to_str().unwrap()])
+        .args(["run", "--", "-x", test_path.to_str().unwrap()])
         .output()
         .expect("Failed to execute hash_rust");
 
@@ -85,8 +88,7 @@ fn test_exclude_filenames() {
 
     // Should not contain filename when -x flag is used
     assert!(!stdout.contains(test_path.file_name().unwrap().to_str().unwrap()));
-    // But should contain the hash. SHA3-256 hash output is 64 characters, so this ensures a hash is present.
-    const MIN_HASH_LENGTH: usize = 64;
+    // But should contain the hash
     assert!(stdout.len() >= MIN_HASH_LENGTH);
 }
 
@@ -97,7 +99,7 @@ fn test_base64_encoding() {
     let test_path = test_file.path();
 
     let output = Command::new("cargo")
-        .args(&["run", "--", "-e", "Base64", test_path.to_str().unwrap()])
+        .args(["run", "--", "-e", "Base64", test_path.to_str().unwrap()])
         .output()
         .expect("Failed to execute hash_rust");
 
@@ -115,7 +117,7 @@ fn test_nonexistent_file_error() {
     let nonexistent_file = temp_dir.join("nonexistent_file.txt");
 
     let output = Command::new("cargo")
-        .args(&["run", "--", nonexistent_file.to_str().unwrap()])
+        .args(["run", "--", nonexistent_file.to_str().unwrap()])
         .output()
         .expect("Failed to execute hash_rust");
 
@@ -136,7 +138,7 @@ fn test_invalid_algorithm_error() {
     let test_path = test_file.path();
 
     let output = Command::new("cargo")
-        .args(&[
+        .args([
             "run",
             "--",
             "-a",
@@ -161,7 +163,7 @@ fn test_invalid_encoding_error() {
     let test_path = test_file.path();
 
     let output = Command::new("cargo")
-        .args(&[
+        .args([
             "run",
             "--",
             "-e",
@@ -187,7 +189,7 @@ fn test_crc32_with_invalid_encoding_error() {
 
     // CRC32 should only work with Hex encoding (U32 format)
     let output = Command::new("cargo")
-        .args(&[
+        .args([
             "run",
             "--",
             "-a",
@@ -214,7 +216,7 @@ fn test_u32_encoding_with_non_crc32_error() {
     let test_path = test_file.path();
 
     let output = Command::new("cargo")
-        .args(&[
+        .args([
             "run",
             "--",
             "-a",
@@ -239,7 +241,7 @@ fn test_u32_encoding_with_non_crc32_error() {
 fn test_empty_file_path_error() {
     // Test with no file arguments
     let output = Command::new("cargo")
-        .args(&["run", "--"])
+        .args(["run", "--"])
         .output()
         .expect("Failed to execute hash_rust");
 
@@ -254,7 +256,7 @@ fn test_empty_file_path_error() {
 #[test]
 fn test_help_flag() {
     let output = Command::new("cargo")
-        .args(&["run", "--", "--help"])
+        .args(["run", "--", "--help"])
         .output()
         .expect("Failed to execute hash_rust");
 
@@ -321,7 +323,7 @@ fn test_stdin_file_paths() {
 
     // Run with paths from stdin
     let mut child = Command::new("cargo")
-        .args(&["run", "--"])
+        .args(["run", "--"])
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
@@ -369,7 +371,7 @@ fn test_stdin_with_nonexistent_paths() {
     );
 
     let mut child = Command::new("cargo")
-        .args(&["run", "--"])
+        .args(["run", "--"])
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
@@ -394,4 +396,32 @@ fn test_stdin_with_nonexistent_paths() {
     // Should have output for only 1 valid file
     let lines: Vec<_> = stdout.lines().filter(|l| !l.is_empty()).collect();
     assert_eq!(lines.len(), 1, "Should only hash the valid file");
+}
+
+#[test]
+#[cfg(unix)]
+fn test_unreadable_file_exits_nonzero() {
+    use std::fs;
+    use std::os::unix::fs::PermissionsExt;
+
+    let temp_file = create_temp_file("content");
+    let path = temp_file.path().to_path_buf();
+
+    // Remove all permissions so the file exists but cannot be read
+    fs::set_permissions(&path, fs::Permissions::from_mode(0o000))
+        .expect("Failed to set permissions");
+
+    let output = Command::new("cargo")
+        .args(["run", "--", path.to_str().unwrap()])
+        .output()
+        .expect("Failed to execute hash_rust");
+
+    // Restore permissions so tempfile cleanup can remove the file
+    fs::set_permissions(&path, fs::Permissions::from_mode(0o644))
+        .expect("Failed to restore permissions");
+
+    assert!(
+        !output.status.success(),
+        "Should exit non-zero when a file cannot be read"
+    );
 }
