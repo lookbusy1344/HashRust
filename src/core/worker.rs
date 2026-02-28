@@ -179,7 +179,7 @@ fn hash_with_progress(
     }
 
     if config.debug_mode
-        && elapsed >= Duration::from_millis(ProgressCoordinator::threshold_millis())
+        && elapsed >= Duration::from_millis(crate::progress::PROGRESS_THRESHOLD_MILLIS)
     {
         eprintln!(
             "File '{}' took {:.2}s to hash",
