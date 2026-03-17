@@ -33,4 +33,4 @@ crc32fast = { default-features = false, version = "1.5" }
 indicatif = "0.18"
 
 [dev-dependencies]
-tempfile = "3.0"
+tempfile = "3.27"
