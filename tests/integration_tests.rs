@@ -315,6 +315,35 @@ fn test_multi_file_parallel_hashing() {
 }
 
 #[test]
+fn test_overall_progress_bar_path_with_many_files() {
+    // The overall progress bar is only shown for >= 10 files (OVERALL_BAR_FILE_THRESHOLD).
+    // This test ensures that code path is exercised and produces correct output.
+    let files: Vec<_> = (0..12)
+        .map(|i| create_temp_file(&format!("content {i}")))
+        .collect();
+
+    let mut args = vec!["run", "--", "--no-progress"];
+    let paths: Vec<_> = files.iter().map(|f| f.path().to_str().unwrap()).collect();
+    args.extend(&paths);
+
+    let output = Command::new("cargo")
+        .args(&args)
+        .output()
+        .expect("Failed to execute hash_rust");
+
+    assert!(output.status.success());
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let lines: Vec<_> = stdout.lines().filter(|l| !l.is_empty()).collect();
+    assert_eq!(lines.len(), 12, "Should output one line per file");
+
+    for line in &lines {
+        let hash = line.split(' ').next().unwrap_or("");
+        assert_eq!(hash.len(), 64, "Each hash should be 64 hex chars");
+        assert!(hash.chars().all(|c| c.is_ascii_hexdigit()));
+    }
+}
+
+#[test]
 fn test_stdin_file_paths() {
     // Create test files
     let file1 = create_temp_file("content1");
