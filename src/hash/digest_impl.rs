@@ -11,6 +11,9 @@ use crate::core::types::{BasicHash, OutputEncoding};
 const BUFFER_SIZE: usize = 4096 * 8;
 
 fn hash_file<D: Digest>(filename: impl AsRef<str>) -> anyhow::Result<Output<D>> {
+    // usize::try_from can only fail on 32-bit targets where usize < u64;
+    // on those targets a file too large to fit in usize falls through to the
+    // chunked path, which is the correct behaviour.
     let filesize = usize::try_from(file_size(filename.as_ref())?).ok();
 
     if filesize.is_some_and(|size| size <= BUFFER_SIZE) {
