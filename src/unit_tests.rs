@@ -263,7 +263,7 @@ mod hash_tests {
 
     #[test]
     fn test_call_hasher_large_file() {
-        // Create a file larger than BUFFER_SIZE (32KB) to test chunked reading
+        // Create a file larger than BUFFER_SIZE (32KB) to test the chunked reading path
         let content = vec![b'x'; 40_000];
         let file = create_test_file_with_content(&content);
         let path = file.path().to_string_lossy().to_string();
@@ -271,10 +271,88 @@ mod hash_tests {
         let result = call_hasher(HashAlgorithm::SHA3_256, OutputEncoding::Hex, &path);
         assert!(result.is_ok());
 
-        // Just verify it produces a valid hex hash
-        let hash = result.unwrap().into_inner();
-        assert_eq!(hash.len(), 64); // SHA3-256 produces 32 bytes = 64 hex chars
-        assert!(hash.chars().all(|c| c.is_ascii_hexdigit()));
+        // SHA3-256 of 40,000 'x' bytes (precomputed reference)
+        assert_eq!(
+            result.unwrap().as_str(),
+            "77fc266841274f9acafa1855a5719a6aa96812a1ad531e3ceb180c9f1b332ce0"
+        );
+    }
+
+    #[test]
+    fn test_call_hasher_sha2_224_known_answer() {
+        let file = create_test_file_with_content(b"test");
+        let path = file.path().to_string_lossy().to_string();
+        let result = call_hasher(HashAlgorithm::SHA2_224, OutputEncoding::Hex, &path);
+        assert_eq!(
+            result.unwrap().as_str(),
+            "90a3ed9e32b2aaf4c61c410eb925426119e1a9dc53d4286ade99a809"
+        );
+    }
+
+    #[test]
+    fn test_call_hasher_sha2_384_known_answer() {
+        let file = create_test_file_with_content(b"test");
+        let path = file.path().to_string_lossy().to_string();
+        let result = call_hasher(HashAlgorithm::SHA2_384, OutputEncoding::Hex, &path);
+        assert_eq!(
+            result.unwrap().as_str(),
+            "768412320f7b0aa5812fce428dc4706b3cae50e02a64caa16a782249bfe8efc4b7ef1ccb126255d196047dfedf17a0a9"
+        );
+    }
+
+    #[test]
+    fn test_call_hasher_sha2_512_known_answer() {
+        let file = create_test_file_with_content(b"test");
+        let path = file.path().to_string_lossy().to_string();
+        let result = call_hasher(HashAlgorithm::SHA2_512, OutputEncoding::Hex, &path);
+        assert_eq!(
+            result.unwrap().as_str(),
+            "ee26b0dd4af7e749aa1a8ee3c10ae9923f618980772e473f8819a5d4940e0db27ac185f8a0e1d5f84f88bc887fd67b143732c304cc5fa9ad8e6f57f50028a8ff"
+        );
+    }
+
+    #[test]
+    fn test_call_hasher_sha3_384_known_answer() {
+        let file = create_test_file_with_content(b"test");
+        let path = file.path().to_string_lossy().to_string();
+        let result = call_hasher(HashAlgorithm::SHA3_384, OutputEncoding::Hex, &path);
+        assert_eq!(
+            result.unwrap().as_str(),
+            "e516dabb23b6e30026863543282780a3ae0dccf05551cf0295178d7ff0f1b41eecb9db3ff219007c4e097260d58621bd"
+        );
+    }
+
+    #[test]
+    fn test_call_hasher_sha3_512_known_answer() {
+        let file = create_test_file_with_content(b"test");
+        let path = file.path().to_string_lossy().to_string();
+        let result = call_hasher(HashAlgorithm::SHA3_512, OutputEncoding::Hex, &path);
+        assert_eq!(
+            result.unwrap().as_str(),
+            "9ece086e9bac491fac5c1d1046ca11d737b92a2b2ebd93f005d7b710110c0a678288166e7fbe796883a4f2e9b3ca9f484f521d0ce464345cc1aec96779149c14"
+        );
+    }
+
+    #[test]
+    fn test_call_hasher_blake2b512_known_answer() {
+        let file = create_test_file_with_content(b"test");
+        let path = file.path().to_string_lossy().to_string();
+        let result = call_hasher(HashAlgorithm::Blake2B512, OutputEncoding::Hex, &path);
+        assert_eq!(
+            result.unwrap().as_str(),
+            "a71079d42853dea26e453004338670a53814b78137ffbed07603a41d76a483aa9bc33b582f77d30a65e6f29a896c0411f38312e1d66e0bf16386c86a89bea572"
+        );
+    }
+
+    #[test]
+    fn test_call_hasher_whirlpool_known_answer() {
+        let file = create_test_file_with_content(b"test");
+        let path = file.path().to_string_lossy().to_string();
+        let result = call_hasher(HashAlgorithm::Whirlpool, OutputEncoding::Hex, &path);
+        assert_eq!(
+            result.unwrap().as_str(),
+            "b913d5bbb8e461c2c5961cbe0edcdadfd29f068225ceb37da6defcf89849368f8c6c2eb6a4c4ac75775d032a0ecfdfe8550573062b653fe92fc7b8fb3b7be8d6"
+        );
     }
 
     #[test]
@@ -300,20 +378,6 @@ mod hash_tests {
             result.unwrap().as_str(),
             "f308fc02ce9172ad02a7d75800ecfc027109bc67987ea32aba9b8dcc7b10150e"
         );
-    }
-
-    #[test]
-    fn test_call_hasher_whirlpool() {
-        let file = create_test_file_with_content(b"test");
-        let path = file.path().to_string_lossy().to_string();
-
-        let result = call_hasher(HashAlgorithm::Whirlpool, OutputEncoding::Hex, &path);
-        assert!(result.is_ok());
-
-        // Just verify it produces a valid 128-char hex hash (64 bytes)
-        let hash = result.unwrap().into_inner();
-        assert_eq!(hash.len(), 128);
-        assert!(hash.chars().all(|c| c.is_ascii_hexdigit()));
     }
 }
 
