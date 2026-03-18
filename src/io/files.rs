@@ -33,9 +33,9 @@ fn get_paths_from_stdin(config: &ConfigSettings) -> Vec<String> {
                 is_file.then_some(line)
             }
             Err(e) => {
-                if config.debug_mode {
-                    eprintln!("Skipping unreadable stdin line: {e}");
-                }
+                // Always report stdin I/O errors so the user isn't silently left
+                // with fewer files hashed than expected.
+                eprintln!("Error reading from stdin: {e}");
                 None
             }
         })
