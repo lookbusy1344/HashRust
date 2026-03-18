@@ -10,6 +10,13 @@ use std::time::Duration;
 
 pub const PROGRESS_THRESHOLD_MILLIS: u64 = 200;
 
+/// Minimum number of files required to show an overall progress bar.
+/// Below this threshold, per-file spinners are used instead.
+const OVERALL_BAR_FILE_THRESHOLD: usize = 10;
+
+/// Tick interval for spinner animations, in milliseconds.
+const SPINNER_TICK_MS: u64 = 350;
+
 /// Coordinator for all progress indication
 ///
 /// Wraps `MultiProgress` to provide application-specific progress display logic.
@@ -29,7 +36,7 @@ impl ProgressCoordinator {
     ///
     /// Returns `None` for small file sets (< 10 files) where per-file spinners are more appropriate.
     pub fn create_overall_progress(&self, file_count: usize) -> Option<Arc<ProgressBar>> {
-        if file_count < 10 {
+        if file_count < OVERALL_BAR_FILE_THRESHOLD {
             return None;
         }
 
@@ -61,7 +68,7 @@ impl ProgressCoordinator {
 
         pb.set_style(style);
         pb.set_message(pathstr.to_string());
-        pb.enable_steady_tick(Duration::from_millis(350));
+        pb.enable_steady_tick(Duration::from_millis(SPINNER_TICK_MS));
         pb
     }
 }
