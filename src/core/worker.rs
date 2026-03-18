@@ -11,6 +11,21 @@ use crate::hash::algorithms::call_hasher;
 use crate::io::files::get_required_filenames;
 use crate::progress::ProgressCoordinator;
 
+/// Returned by `worker_func` when one or more files failed to hash.
+///
+/// Distinguished from config/arg errors so `main` can suppress the help banner
+/// (individual file errors are already printed to stderr before this is returned).
+#[derive(Debug)]
+pub(crate) struct FileHashError;
+
+impl std::fmt::Display for FileHashError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "One or more files failed to hash")
+    }
+}
+
+impl std::error::Error for FileHashError {}
+
 fn print_hash_line(
     out: &mut impl Write,
     hash: &BasicHash,
@@ -49,7 +64,7 @@ pub fn worker_func(config: &ConfigSettings) -> Result<()> {
     };
 
     if had_error {
-        std::process::exit(1);
+        return Err(FileHashError.into());
     }
 
     Ok(())
