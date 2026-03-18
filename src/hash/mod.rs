@@ -1,3 +1,3 @@
 pub mod algorithms;
-pub mod crc32;
-pub mod digest_impl;
+pub(crate) mod crc32;
+pub(crate) mod digest_impl;
