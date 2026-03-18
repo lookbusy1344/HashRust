@@ -5,7 +5,6 @@
 //! coordinated rendering without manual thread management.
 
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
-use std::sync::Arc;
 use std::time::Duration;
 
 pub const PROGRESS_THRESHOLD_MILLIS: u64 = 200;
@@ -35,7 +34,7 @@ impl ProgressCoordinator {
     /// Create an overall progress bar for multiple file operations
     ///
     /// Returns `None` for small file sets (< 10 files) where per-file spinners are more appropriate.
-    pub fn create_overall_progress(&self, file_count: usize) -> Option<Arc<ProgressBar>> {
+    pub fn create_overall_progress(&self, file_count: usize) -> Option<ProgressBar> {
         if file_count < OVERALL_BAR_FILE_THRESHOLD {
             return None;
         }
@@ -50,7 +49,7 @@ impl ProgressCoordinator {
             });
         pb.set_style(style);
         pb.set_message("Processing...");
-        Some(Arc::new(pb))
+        Some(pb)
     }
 
     /// Create a spinner for a single file operation
