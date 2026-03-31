@@ -14,7 +14,7 @@ strip = true
 [dependencies]
 strum = { version = "0.28", features = ["derive"], default-features = false }
 anyhow = "1.0"
-digest = { default-features = false, version = "0.10" }
+digest = { default-features = false, version = "0.11" }
 git-version = "0.3"
 glob = "0.3"
 hex = "0.4"
@@ -26,9 +26,9 @@ byteorder = { default-features = false, version = "1.5" }
 md-5 = { default-features = false, version = "0.11" }
 sha1 = { default-features = false, version = "0.11" }
 sha2 = { default-features = false, version = "0.11" }
-sha3 = { default-features = false, version = "0.10" }
+sha3 = { default-features = false, version = "0.11.0-rc.9" }
 whirlpool = { default-features = false, version = "0.11" }
-blake2 = { default-features = false, version = "0.10" }
+blake2 = { default-features = false, version = "0.11.0-rc.5" }
 crc32fast = { default-features = false, version = "1.5" }
 indicatif = "0.18"
 
