@@ -60,4 +60,15 @@ HashRust is a CLI file hashing utility written in Rust that supports multiple ha
 
 ## Development Workflow
 
-Use the `pre-commit` skill before committing: runs `cargo fmt` and pedantic `cargo clippy`.
+Before every commit, run these in order — **all must pass cleanly**:
+
+```
+cargo build
+cargo clippy --all-targets --all-features -- -D clippy::all -D clippy::pedantic -F unsafe_code
+cargo fmt
+gtimeout 60 cargo nextest run
+```
+
+(test fallback: `gtimeout 60 cargo test`)
+
+Also run `cargo audit` at least once per working session.

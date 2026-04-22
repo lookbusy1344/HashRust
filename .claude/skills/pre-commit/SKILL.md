@@ -5,11 +5,16 @@ description: Run before committing changes - formats code, runs pedantic clippy,
 
 # Pre-commit Checks
 
-Run after every code change, before committing:
+Before every commit, run these in order — **all must pass cleanly**:
 
-1. `cargo fmt` — format all code
-2. `cargo clippy --all-targets --all-features -- -D clippy::all -D clippy::pedantic -F unsafe_code` — pedantic lint
-3. `gtimeout 60 cargo nextest run` — full test suite (fallback: `gtimeout 60 cargo test`)
+```
+cargo build
+cargo clippy --all-targets --all-features -- -D clippy::all -D clippy::pedantic -F unsafe_code
+cargo fmt
+gtimeout 60 cargo nextest run
+```
+
+(test fallback: `gtimeout 60 cargo test`)
 
 All must pass cleanly before committing.
 
