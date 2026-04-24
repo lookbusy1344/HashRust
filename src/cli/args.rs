@@ -18,7 +18,7 @@ pub fn process_command_line(mut pargs: Arguments) -> Result<ConfigSettings> {
 
     let encoding_str: Option<String> = pargs.opt_value_from_str(["-e", "--encoding"])?;
     let encoding_opt = parse_hash_encoding(encoding_str.as_deref())
-        .map_err(|_| anyhow!("Encoding can be: Hex, Base64, Base32. Default is Hex",))?;
+        .map_err(|_| anyhow!("Encoding can be: Hex, Base64, Base32. Default is Hex"))?;
 
     // Resolve Option<OutputEncoding> to concrete encoding based on algorithm
     let encoding = match encoding_opt {
