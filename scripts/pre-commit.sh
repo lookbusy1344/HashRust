@@ -65,7 +65,7 @@ while IFS= read -r -d '' staged_path; do
     if is_rust_check_path "${staged_path}"; then
         should_run=true
     fi
-done < <(git -C "${PROJECT_DIR}" diff --cached --name-only -z)
+done < <(git -C "${PROJECT_DIR}" diff HEAD --name-only -z)
 
 if [[ "${has_staged_paths}" != true ]]; then
     echo "==> No staged files detected, skipping pre-commit checks."
