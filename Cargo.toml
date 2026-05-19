@@ -26,7 +26,7 @@ byteorder = { default-features = false, version = "1.5" }
 md-5 = { default-features = false, version = "0.11" }
 sha1 = { default-features = false, version = "0.11" }
 sha2 = { default-features = false, version = "0.11" }
-sha3 = { default-features = false, version = "0.11.0" }
+sha3 = { default-features = false, version = "0.12.0" }
 whirlpool = { default-features = false, version = "0.11" }
 blake2 = { default-features = false, version = "0.11.0-rc.6" }
 crc32fast = { default-features = false, version = "1.5" }
