@@ -12,6 +12,14 @@ pub fn get_required_filenames(config: &ConfigSettings) -> Result<Vec<String>> {
         get_paths_matching_glob(config)?
     };
 
+    // De-duplicate while preserving first-seen order.
+    // Duplicates arise when overlapping glob patterns or repeated literal
+    // arguments produce the same path more than once.
+    {
+        let mut seen = std::collections::HashSet::new();
+        paths.retain(|p| seen.insert(p.clone()));
+    }
+
     if let Some(limit) = config.limit_num {
         paths.truncate(limit);
     }

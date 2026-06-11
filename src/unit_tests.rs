@@ -640,6 +640,61 @@ mod glob_tests {
     }
 
     #[test]
+    fn test_dedup_overlapping_globs() {
+        let temp_dir = create_test_directory_structure();
+        let base_path = temp_dir.path();
+
+        // `*.txt` matches all .txt files; `test*` also matches them = overlapping
+        let pattern1 = format!("{}/*.txt", base_path.display());
+        let pattern2 = format!("{}/test*", base_path.display());
+        let config = ConfigSettings {
+            debug_mode: false,
+            exclude_fn: false,
+            single_thread: false,
+            case_sensitive: true,
+            no_progress: false,
+            algorithm: HashAlgorithm::SHA3_256,
+            encoding: OutputEncoding::Hex,
+            limit_num: None,
+            supplied_paths: vec![pattern1, pattern2],
+        };
+
+        let result = get_required_filenames(&config);
+        assert!(result.is_ok());
+
+        let paths = result.unwrap();
+        let mut unique = std::collections::HashSet::new();
+        for path in &paths {
+            assert!(unique.insert(path.clone()), "duplicate path: {path}");
+        }
+    }
+
+    #[test]
+    fn test_dedup_literal_duplicates() {
+        let temp_dir = create_test_directory_structure();
+        let base_path = temp_dir.path();
+
+        let literal = base_path.join("test1.txt").to_string_lossy().to_string();
+        let config = ConfigSettings {
+            debug_mode: false,
+            exclude_fn: false,
+            single_thread: false,
+            case_sensitive: true,
+            no_progress: false,
+            algorithm: HashAlgorithm::SHA3_256,
+            encoding: OutputEncoding::Hex,
+            limit_num: None,
+            supplied_paths: vec![literal.clone(), literal],
+        };
+
+        let result = get_required_filenames(&config);
+        assert!(result.is_ok());
+
+        let paths = result.unwrap();
+        assert_eq!(paths.len(), 1);
+    }
+
+    #[test]
     fn test_glob_filters_directories() {
         let temp_dir = create_test_directory_structure();
         let base_path = temp_dir.path();
