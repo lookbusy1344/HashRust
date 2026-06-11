@@ -5,7 +5,12 @@
 #   ln -sf ../../scripts/pre-commit.sh .git/hooks/pre-commit
 #
 # Can also be run directly:
-#   ./scripts/pre-commit.sh
+# if [ ! -x "scripts/pre-commit.sh" ]; then
+#      echo "Missing executable scripts/pre-commit.sh" >&2
+#      exit 1
+# fi
+
+# exec ./scripts/pre-commit.sh
 
 set -euo pipefail
 
