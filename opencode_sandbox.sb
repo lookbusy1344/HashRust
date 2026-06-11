@@ -1,0 +1,544 @@
+;; Last change: 2026-05-19 08:55 BST — deny writes to the global opencode
+;; config (~/.config/opencode/opencode.json[c]) so a runaway agent can't weaken
+;; the policy baseline for future non-sandboxed launches.  Runtime state stays writable.
+;;
+;; opencode.sb — macOS Seatbelt profile confining opencode's writes to this project.
+;;
+;; Usage:
+;;   sandbox-exec -f opencode.sb \
+;;       -D PROJECT="$(pwd)" \
+;;       -D GITROOT="$(git rev-parse --show-toplevel)" \
+;;       -D HOME="$HOME" \
+;;       -- opencode
+;;
+;; PROJECT, GITROOT, and HOME must be absolute paths.  GITROOT may equal
+;; PROJECT when PROJECT is itself the repo root; sandbox.sh handles the
+;; common case (PROJECT is a subdir of GITROOT) automatically.
+;;
+;; Writes outside the allow-list below
+;; are denied at the kernel layer; reads stay broad except for credential, cookie,
+;; history, and message-store locations (the `deny file-read*` blocks).  Inbound
+;; network is denied; a small set of GUI-bridge binaries (osascript, screencapture,
+;; pbpaste, pbcopy) cannot be exec()'d.
+;;
+;; Caveats:
+;;   - `sandbox-exec` is deprecated by Apple but still functional on macOS 15.
+;;   - Network is NOT restricted (opencode needs it to reach the model provider).
+;;   - Subprocesses inherit the sandbox — `go test`, `cargo test`, `dotnet test`,
+;;     `git`, etc. are confined too.
+;;   - If $GOCACHE, $GOMODCACHE, $CARGO_HOME, or $NUGET_PACKAGES differ from the
+;;     defaults, edit the relevant cache paths below.
+
+(version 1)
+
+;; Baseline: permit everything, then carve down file-writes.
+(allow default)
+(deny file-write*)
+
+;; --- Writes: the project directory (the whole point) ---
+
+(allow file-write*
+    (subpath (param "PROJECT")))
+
+;; Allow writes to the enclosing repo's .git directory only.  When PROJECT
+;; is a subdirectory of the git repo (e.g. PROJECT=.../XCodeStuff/windowless_reaper,
+;; GITROOT=.../XCodeStuff), git commands need to update GITROOT/.git/{index,
+;; refs,objects,HEAD,logs,...}.  We grant exactly that subpath — not the
+;; whole repo root — so sibling project directories under GITROOT remain
+;; read-only from inside the sandbox.  If GITROOT==PROJECT this rule is
+;; redundant (already covered by the PROJECT subpath above), which is fine.
+
+(allow file-write*
+    (subpath (string-append (param "GITROOT") "/.git")))
+
+;; --- Writes: deny self-edit of policy and config files inside PROJECT ---
+;; The .sb file lives inside PROJECT, so writes to it would otherwise be
+;; allowed by the rule above.  Without this carve-out, a successful prompt
+;; injection could rewrite the sandbox profile and a fresh launch would
+;; pick up the weakened policy — defeating the whole "config-as-code,
+;; reviewable in git" posture.  Same shape for opencode_sandbox.json (the
+;; in-process policy loaded via OPENCODE_CONFIG that the agent can otherwise
+;; edit), sandbox.sh (the launcher), and CLAUDE.md (the agent's standing
+;; instructions, an attractive rewrite target).  opencode.json and
+;; .opencode.json are also listed even though they shouldn't exist here —
+;; defence against an agent dropping a permissive auto-loaded config that
+;; would take effect on the next non-sandboxed `opencode` invocation.
+;;
+;; These files only change during deliberate human edits; do those edits
+;; outside opencode.  SBPL is last-match-wins within file-write*, so this
+;; deny overrides the PROJECT subpath allow for these specific literals.
+
+(deny file-write*
+    (literal (string-append (param "PROJECT") "/opencode_sandbox.sb"))
+    (literal (string-append (param "PROJECT") "/opencode_sandbox.json"))
+    (literal (string-append (param "PROJECT") "/opencode.json"))
+    (literal (string-append (param "PROJECT") "/.opencode.json"))
+    (literal (string-append (param "PROJECT") "/sandbox.sh"))
+    (literal (string-append (param "PROJECT") "/CLAUDE.md"))
+    (subpath (string-append (param "GITROOT") "/.git/hooks")))
+
+;; --- Writes: Swift / SwiftPM toolchain caches ---
+;; Required for `swift build`, `swift test`, `swift package resolve`,
+;; SourceKit indexing, swiftlint and swiftformat caches, and periphery's
+;; index store (which lives under .build inside PROJECT, already allowed).
+;;
+;;   - ~/Library/Caches/org.swift.swiftpm:   SwiftPM dependency cache.
+;;   - ~/Library/org.swift.swiftpm:          SwiftPM security/config state
+;;                                            (mirrors, trusted fingerprints).
+;;   - ~/Library/Caches/swiftpm:             older SwiftPM cache path.
+;;   - ~/Library/Developer/Xcode/DerivedData: SourceKit / index store
+;;                                            artefacts when invoked via
+;;                                            sourcekit-lsp or Xcode toolchain.
+;;   - ~/Library/Caches/clang:               clang module cache used by the
+;;                                            Swift compiler for C interop.
+;;   - ~/.swiftpm:                           per-user SwiftPM state on some
+;;                                            installs.
+
+(allow file-write*
+    (subpath (string-append (param "HOME") "/Library/Caches/org.swift.swiftpm"))
+    (subpath (string-append (param "HOME") "/Library/org.swift.swiftpm"))
+    (subpath (string-append (param "HOME") "/Library/Caches/swiftpm"))
+    (subpath (string-append (param "HOME") "/Library/Developer/Xcode/DerivedData"))
+    (subpath (string-append (param "HOME") "/Library/Caches/clang"))
+    (subpath (string-append (param "HOME") "/Library/Caches/SwiftLint"))
+    (subpath (string-append (param "HOME") "/Library/Caches/SwiftFormat"))
+    (subpath (string-append (param "HOME") "/Library/Caches/Periphery"))
+    (subpath (string-append (param "HOME") "/.swiftpm")))
+
+;; --- Writes: Go toolchain caches ---
+;; Required for `go build`, `go test`, `golangci-lint`, and module downloads
+;; triggered by `go mod tidy`, `go mod download`, `go get`.  Throwaway content.
+
+(allow file-write*
+    (subpath (string-append (param "HOME") "/Library/Caches/go-build"))
+    (subpath (string-append (param "HOME") "/Library/Caches/golangci-lint"))
+    (subpath (string-append (param "HOME") "/go/pkg")))
+
+;; NOTE: ~/go/bin (destination for `go install <tool>`) is intentionally NOT
+;; writable — symmetric with the ~/.cargo/bin and ~/.dotnet/tools posture
+;; below.  The agent can download modules but cannot land new binaries on
+;; $PATH.  If you need a go-installed tool, install it outside the sandbox.
+
+;; --- Writes: Rust toolchain caches ---
+;; Required for `cargo check`, `cargo build`, `cargo test`, `cargo clippy`,
+;; `cargo fmt`.  The registry holds downloaded crates; the git subtree holds
+;; git-based deps; the top-level lock/index files track installed crates.
+
+(allow file-write*
+    (subpath (string-append (param "HOME") "/.cargo/registry"))
+    (subpath (string-append (param "HOME") "/.cargo/git"))
+    (subpath (string-append (param "HOME") "/.cargo/advisory-db"))
+    (literal (string-append (param "HOME") "/.cargo/.package-cache"))
+    (literal (string-append (param "HOME") "/.cargo/.crates.toml"))
+    (literal (string-append (param "HOME") "/.cargo/.crates2.json")))
+
+;; NOTE: ~/.cargo/bin (cargo-installed binaries) and ~/.rustup (toolchain
+;; installs, channels, targets) are intentionally NOT writable.  `cargo
+;; install <tool>` and `rustup update|default|toolchain install` will fail
+;; with EPERM, which is the sandbox doing its job — the agent should not be
+;; able to pivot the toolchain or land new binaries on $PATH.  If you ever
+;; need to bootstrap a new toolchain, do it outside the sandbox.
+
+;; --- Writes: .NET toolchain caches ---
+;; Required for `dotnet restore`, `dotnet build`, `dotnet test`,
+;; `dotnet format`, `dotnet publish`.  NuGet's global package cache,
+;; plugin cache, and the SDK's per-user state directory.
+;;
+;;   - ~/.nuget/packages:        global packages cache (the bulk of
+;;                                what restore writes).
+;;   - ~/.nuget/plugins-cache:   credential-provider cache.
+;;   - ~/.dotnet:                SDK telemetry, optimization data, NuGet
+;;                                fallback folder, dotnet-cli first-run
+;;                                sentinel files.
+;;
+;; NOTE: writes to the rest of ~/.nuget (in particular
+;; ~/.nuget/NuGet/NuGet.Config) are deliberately NOT allowed.  Letting the
+;; agent rewrite NuGet.Config would be a supply-chain pivot: it could
+;; insert a <packageSources> entry pointing at an attacker-controlled feed,
+;; and the next `dotnet restore` — in any project, not just this one,
+;; since the file is user-global — would pull packages from that feed.
+;; If first-run NuGet config writes are needed, do them outside the
+;; sandbox once and commit a project-local NuGet.config.
+;;
+;; The ~/.dotnet/tools carve-out below blocks `dotnet tool install -g`.
+
+(allow file-write*
+    (subpath (string-append (param "HOME") "/.nuget/packages"))
+    (subpath (string-append (param "HOME") "/.nuget/plugins-cache"))
+    (subpath (string-append (param "HOME") "/.dotnet")))
+
+;; Belt-and-braces: explicitly deny writes to user-global NuGet.Config
+;; even within the allowed write-subpaths above.  Redundant given the
+;; narrow allow-list, but documents the threat model and survives any
+;; future widening of the ~/.nuget allow.
+
+(deny file-write*
+    (literal (string-append (param "HOME") "/.nuget/NuGet/NuGet.Config"))
+    (literal (string-append (param "HOME") "/.config/NuGet/NuGet.Config")))
+
+;; Carve out ~/.dotnet/tools so `dotnet tool install -g <x>` fails with EPERM.
+;; SBPL is last-match-wins within an operation class, so this deny beats the
+;; broader ~/.dotnet allow above.  Symmetric with the ~/go/bin and
+;; ~/.cargo/bin posture: agent can add project deps, cannot install globals.
+
+(deny file-write*
+    (subpath (string-append (param "HOME") "/.dotnet/tools")))
+
+;; --- Writes: Python toolchain caches ---
+;; Required for `pip install -r requirements.txt` into a project venv,
+;; `uv sync`, `uv run`, `poetry install`, `pytest` (writes .pytest_cache
+;; inside PROJECT already), `ruff`, `mypy` (.mypy_cache inside PROJECT).
+;; The HOME-side caches below hold downloaded wheels and resolver state.
+;;
+;;   - ~/.cache/pip, ~/Library/Caches/pip:  pip's wheel cache.
+;;   - ~/.cache/uv, ~/Library/Caches/uv:    uv's resolver + download cache.
+;;   - ~/.local/share/uv:                   uv's managed Python installs
+;;                                          (uv stores interpreters here when
+;;                                          a project pins a version uv has
+;;                                          to fetch — distinct from a global
+;;                                          `uv python install` which is denied
+;;                                          at the bash-permission layer).
+;;   - ~/.cache/pypoetry, ~/Library/Caches/pypoetry: poetry's cache.
+;;   - ~/Library/Caches/pip, /pypoetry:     macOS XDG-equivalent locations.
+
+(allow file-write*
+    (subpath (string-append (param "HOME") "/.cache/pip"))
+    (subpath (string-append (param "HOME") "/.cache/uv"))
+    (subpath (string-append (param "HOME") "/.cache/pypoetry"))
+    (subpath (string-append (param "HOME") "/.local/share/uv"))
+    (subpath (string-append (param "HOME") "/.local/share/virtualenvs"))
+    (subpath (string-append (param "HOME") "/Library/Caches/pip"))
+    (subpath (string-append (param "HOME") "/Library/Caches/uv"))
+    (subpath (string-append (param "HOME") "/Library/Caches/pypoetry"))
+    (subpath (string-append (param "HOME") "/Library/Caches/Ruff"))
+    (subpath (string-append (param "HOME") "/Library/Caches/mypy")))
+
+;; NOTE: ~/.local/bin, ~/.local/pipx, ~/.pyenv/{shims,versions} are
+;; intentionally NOT writable — symmetric with ~/.cargo/bin, ~/go/bin,
+;; ~/.dotnet/tools.  `pipx install`, `uv tool install`, `pyenv install`
+;; will fail with EPERM (and are also denied at the bash-permission layer
+;; for clearer error messages).  Bootstrap toolchains outside the sandbox.
+
+;; --- Writes: Node.js / npm / pnpm / yarn toolchain caches ---
+;; Required for `pnpm install`, `pnpm build`, `pnpm test`, `pnpm dev`,
+;; `npm ci`, `yarn install`, `vite`, `vitest`, `esbuild`, `tsc`, and any
+;; node-gyp native-module builds (e.g. esbuild's optional binaries).
+;; In-project state (node_modules, .vite, dist, .eslintcache) is already
+;; covered by the PROJECT subpath above.
+;;
+;;   - ~/.npm:                    npm's wheel/tarball cache + _logs.
+;;   - ~/.npm-packages, ~/.config/npm:
+;;                                npm CLI config (read-only by default; some
+;;                                first-runs touch it for cache locks).
+;;   - ~/Library/Caches/pnpm:     pnpm metadata + side-effects cache (macOS).
+;;   - ~/Library/pnpm/store:      pnpm's content-addressable global store
+;;                                (the bulk of what `pnpm install` writes).
+;;                                Sibling ~/Library/pnpm holds the global
+;;                                bin shims and is intentionally NOT writable.
+;;   - ~/.local/share/pnpm/store, ~/.pnpm-store:
+;;                                alternative pnpm store locations
+;;                                (XDG-style and legacy).
+;;   - ~/.cache/node, ~/Library/Caches/node-gyp, ~/.node-gyp:
+;;                                node-gyp's headers/binary cache for
+;;                                building native modules.
+;;   - ~/.cache/yarn, ~/Library/Caches/Yarn:
+;;                                yarn 1.x cache.
+;;   - ~/.yarn/berry:             yarn 2+/berry global cache.
+;;   - ~/.cache/node/corepack, ~/Library/Caches/node/corepack:
+;;                                corepack-managed package-manager binaries.
+
+(allow file-write*
+    (subpath (string-append (param "HOME") "/.npm"))
+    (subpath (string-append (param "HOME") "/.config/npm"))
+    (subpath (string-append (param "HOME") "/Library/Caches/pnpm"))
+    (subpath (string-append (param "HOME") "/Library/pnpm/store"))
+    (subpath (string-append (param "HOME") "/.local/share/pnpm/store"))
+    (subpath (string-append (param "HOME") "/.pnpm-store"))
+    (subpath (string-append (param "HOME") "/.cache/node"))
+    (subpath (string-append (param "HOME") "/.node-gyp"))
+    (subpath (string-append (param "HOME") "/Library/Caches/node-gyp"))
+    (subpath (string-append (param "HOME") "/.cache/yarn"))
+    (subpath (string-append (param "HOME") "/Library/Caches/Yarn"))
+    (subpath (string-append (param "HOME") "/.yarn/berry")))
+
+;; NOTE: ~/Library/pnpm (global bin shims) sibling to /store, ~/.npm-global,
+;; ~/.yarn/bin, and ~/.config/yarn/global are intentionally NOT writable —
+;; symmetric with ~/.cargo/bin, ~/go/bin, ~/.dotnet/tools, ~/.local/bin.
+;; `pnpm add -g`, `npm install -g`, `yarn global add` will fail with EPERM
+;; (and are also denied at the bash-permission layer for clearer errors).
+;; corepack shims live at ~/.local/share/node/corepack and are also kept
+;; read-only — bootstrap package managers outside the sandbox.
+
+;; --- Writes: Jupyter / IPython / matplotlib / fontconfig caches ---
+;; Required when running notebooks (jupyter nbconvert --execute, jupyter
+;; lab, ipykernel under VS Code, papermill).  IPython wants ~/.ipython
+;; for its profile + history; Jupyter writes runtime + kernel state under
+;; ~/.jupyter and ~/.local/share/jupyter; matplotlib builds a font cache
+;; under ~/.matplotlib (legacy) and ~/.cache/matplotlib (XDG); any plot
+;; that hits libfontconfig populates ~/.cache/fontconfig (~/.fontconfig
+;; on older installs).  All throwaway caches — rebuilt on demand, no
+;; credential value.  Without these, stderr fills with "not writable"
+;; warnings and font scanning re-runs on every notebook execute.
+;;
+;; System-wide /opt/homebrew/var/cache/fontconfig is intentionally NOT
+;; allowed — the user-local cache is sufficient and writing to a
+;; system path would be a sandbox escape vector.
+
+(allow file-write*
+    (subpath (string-append (param "HOME") "/.ipython"))
+    (subpath (string-append (param "HOME") "/.jupyter"))
+    (subpath (string-append (param "HOME") "/.local/share/jupyter"))
+    (subpath (string-append (param "HOME") "/.matplotlib"))
+    (subpath (string-append (param "HOME") "/.cache/matplotlib"))
+    (subpath (string-append (param "HOME") "/.cache/fontconfig"))
+    (subpath (string-append (param "HOME") "/.fontconfig"))
+    (subpath (string-append (param "HOME") "/Library/Caches/matplotlib"))
+    (subpath (string-append (param "HOME") "/Library/Caches/fontconfig")))
+
+;; --- Writes: opencode's own state ---
+
+(allow file-write*
+    (subpath (string-append (param "HOME") "/.config/opencode"))
+    (subpath (string-append (param "HOME") "/.local/share/opencode"))
+    (subpath (string-append (param "HOME") "/.cache/opencode"))
+    (subpath (string-append (param "HOME") "/Library/Application Support/opencode"))
+    (subpath (string-append (param "HOME") "/Library/Caches/opencode"))
+    (subpath (string-append (param "HOME") "/Library/Logs/opencode")))
+
+;; --- Writes: deny self-edit of the global opencode config ---
+;; The subpath allow above covers ~/.config/opencode/ broadly so opencode can
+;; manage its own runtime state (sessions, history, caches).  But the global
+;; permission config — opencode.json / opencode.jsonc — sits in that same
+;; directory, and a successful prompt injection could rewrite it to weaken
+;; policy for every future non-sandboxed `opencode` invocation on this
+;; machine.  This run is unaffected (the wrapper loads opencode_sandbox.json
+;; via OPENCODE_CONFIG, which sits above the global config in precedence)
+;; but a fresh launch elsewhere on the box would inherit the weakened
+;; baseline.  Carve those two files out; do edits manually outside opencode.
+
+(deny file-write*
+    (literal (string-append (param "HOME") "/.config/opencode/opencode.json"))
+    (literal (string-append (param "HOME") "/.config/opencode/opencode.jsonc")))
+
+;; --- Writes: temp directories and standard streams ---
+
+(allow file-write*
+    (subpath "/tmp")
+    (subpath "/private/tmp")
+    (subpath "/var/folders")
+    (subpath "/private/var/folders"))
+
+(allow file-write*
+    (literal "/dev/null")
+    (literal "/dev/tty")
+    (literal "/dev/stdout")
+    (literal "/dev/stderr")
+    (literal "/dev/dtracehelper")
+    (regex #"^/dev/ttys[0-9]+$")
+    (regex #"^/dev/fd/[0-9]+$"))
+
+;; --- Reads: block secret locations outright ---
+;; Reads are otherwise broad (needed for system libs, toolchains, etc.).
+
+(deny file-read*
+    (subpath (string-append (param "HOME") "/.ssh"))
+    (subpath (string-append (param "HOME") "/.aws"))
+    (subpath (string-append (param "HOME") "/.gnupg"))
+    (subpath (string-append (param "HOME") "/.config/gcloud"))
+    (literal (string-append (param "HOME") "/.config/gh/hosts.yml"))
+    (subpath (string-append (param "HOME") "/.docker"))
+    (subpath (string-append (param "HOME") "/.kube"))
+    (subpath (string-append (param "HOME") "/.orbstack"))
+    (literal (string-append (param "HOME") "/.netrc"))
+    (literal (string-append (param "HOME") "/.cargo/credentials.toml"))
+    (literal (string-append (param "HOME") "/.cargo/credentials"))
+    (subpath (string-append (param "HOME") "/.microsoft/usersecrets"))
+    (subpath (string-append (param "HOME") "/.aspnet/https"))
+    ;; NOTE: NuGet.Config (~/.nuget/NuGet/NuGet.Config, ~/.config/NuGet/NuGet.Config)
+    ;; is intentionally NOT denied.  dotnet restore/build/test/format all read
+    ;; it to resolve package sources and SDK references — even with --no-restore,
+    ;; MSBuild reads it during target resolution.  On macOS, NuGet auth tokens
+    ;; live in the keychain (already TCC-protected and covered by the Keychains
+    ;; blanket deny below), so NuGet.Config rarely holds secrets in plaintext.
+    ;; Denying it makes dotnet commands fail in confusing, sometimes silent ways.
+    (subpath (string-append (param "HOME") "/.claude"))
+    (literal (string-append (param "HOME") "/.claude.json"))
+    (literal (string-append (param "HOME") "/.claude.json.backup"))
+    (subpath (string-append (param "HOME") "/.copilot"))
+    (subpath (string-append (param "HOME") "/.gemini"))
+    (subpath (string-append (param "HOME") "/.junie")))
+
+;; --- Reads: broad-stroke deny on macOS Library subtrees ---
+;; These subtrees collectively house the highest-value exfil targets on a
+;; developer macOS machine in 2026 — ahead of SSH keys for most users:
+;;
+;;   - Application Support: per-app state for Chrome / Brave / Edge / Arc /
+;;     Firefox (cookies, session tokens, saved passwords), Slack desktop
+;;     (xoxc tokens), VS Code / Cursor extension secret storage, and most
+;;     third-party GUI apps.
+;;   - Containers: App-Sandbox-signed apps' isolated data — including
+;;     com.apple.Safari and Docker Desktop's runtime state.
+;;   - Group Containers: shared app data — Apple Notes, the 1Password
+;;     native vault metadata, etc.
+;;   - Cookies: Safari's binarycookies file (Safari's cookies live OUTSIDE
+;;     its sandbox container on modern macOS).
+;;   - Keychains: login.keychain-db plus its WAL/SHM files and ACL state.
+;;     Encrypted at rest, but metadata leaks structure.
+;;   - Mail / Messages: chat.db, attachments, mailbox stores.  Already
+;;     TCC-protected for processes without Full Disk Access; the sandbox
+;;     deny is defence-in-depth against accidental TCC grants.
+;;   - Safari (legacy): older history/bookmark plists outside the Container.
+;;
+;; CLI toolchains (go, cargo, dotnet, git, shell built-ins) do not read
+;; from these locations during normal use, so a blanket deny is cheap.
+;; opencode's own ~/Library/Application Support/opencode is re-allowed
+;; below — last-match-wins on the carve-out.
+;;
+;; (with no-log) suppresses Sandbox denials in the unified system log.
+;; macOS subsystems (Spotlight, mds, CFPrefs) incidentally stat() these
+;; dirs constantly; without no-log, `log stream --predicate 'sender ==
+;; "Sandbox"'` becomes useless during a `go test` run as legitimate
+;; signal drowns in the noise.
+
+(deny file-read* (with no-log)
+    (subpath (string-append (param "HOME") "/Library/Application Support"))
+    (subpath (string-append (param "HOME") "/Library/Containers"))
+    (subpath (string-append (param "HOME") "/Library/Group Containers"))
+    (subpath (string-append (param "HOME") "/Library/Cookies"))
+    (subpath (string-append (param "HOME") "/Library/Keychains"))
+    (subpath (string-append (param "HOME") "/Library/Mail"))
+    (subpath (string-append (param "HOME") "/Library/Messages"))
+    (subpath (string-append (param "HOME") "/Library/Safari")))
+
+;; --- Reads: shell and REPL history files ---
+;; Routinely contain inline credentials — pasted tokens, API keys in
+;; one-liner commands, DB connection strings with passwords.  No
+;; legitimate reason for opencode or its subprocesses to touch them
+;; (subshells run non-interactively and don't read history).  Specific
+;; literals rather than blanket — these are the exact filenames worth
+;; denying and a broader rule would risk false positives in $HOME.
+
+(deny file-read*
+    (literal (string-append (param "HOME") "/.zsh_history"))
+    (literal (string-append (param "HOME") "/.bash_history"))
+    (literal (string-append (param "HOME") "/.python_history"))
+    (literal (string-append (param "HOME") "/.node_repl_history"))
+    (literal (string-append (param "HOME") "/.irb_history"))
+    (literal (string-append (param "HOME") "/.lesshst"))
+    (literal (string-append (param "HOME") "/.viminfo"))
+    (literal (string-append (param "HOME") "/.sqlite_history"))
+    (literal (string-append (param "HOME") "/.psql_history"))
+    (literal (string-append (param "HOME") "/.mysql_history"))
+    (literal (string-append (param "HOME") "/.rediscli_history"))
+    (literal (string-append (param "HOME") "/.local/share/fish/fish_history"))
+    (subpath (string-append (param "HOME") "/.zsh_sessions")))
+
+;; --- Reads: password manager CLI session state ---
+;; The native vaults live under TCC-protected Group Containers (already
+;; covered by the Library blanket above).  These paths are the CLI
+;; companion state — short-lived session tokens, but live access to
+;; the user's whole vault while a session is valid.
+;;
+;;   - ~/.config/op:           1Password CLI session state.
+;;   - ~/.config/Bitwarden CLI: bw CLI session state (note the space).
+
+(deny file-read*
+    (subpath (string-append (param "HOME") "/.config/op"))
+    (subpath (string-append (param "HOME") "/.config/Bitwarden CLI")))
+
+;; --- Reads: re-allow opencode's own state under the Library blanket ---
+;; The Application Support deny above also matches opencode's own data
+;; dir.  SBPL is last-match-wins within an operation class, so this
+;; allow re-grants reads under the carve-out path while the deny
+;; continues to apply to siblings (Slack, Code, Cursor, browsers, etc.).
+
+(allow file-read*
+    (subpath (string-append (param "HOME") "/Library/Application Support/opencode"))
+    ;; NuGet plugin/credential-provider state.  Some private feeds ship a
+    ;; credential provider that the broad Library deny would otherwise hide,
+    ;; making `dotnet restore` fail to authenticate against the feed.  The
+    ;; matching keychain entry is still blocked by the Keychains deny above.
+    (subpath (string-append (param "HOME") "/Library/Application Support/NuGet")))
+
+;; --- Reads: package-publishing and IaC credentials ---
+;; Every modern language ecosystem ships its publish/upload tokens to a
+;; well-known dotfile.  These are write-once credentials that typically
+;; only get rotated when leaked, so they're high-value targets.
+;;
+;;   - .npmrc:                       npm/yarn auth token (`npm login`).
+;;                                   The user-global file at $HOME/.npmrc;
+;;                                   project-level .npmrc files inside
+;;                                   PROJECT remain readable.
+;;   - .terraform.d/credentials.tfrc.json:
+;;                                   Terraform Cloud / HCP tokens.
+;;   - .gem/credentials:             RubyGems API key (`gem push` auth).
+;;   - .pypirc:                      PyPI upload token (also read by twine).
+;;   - .git-credentials, .config/git/credentials:
+;;                                   git credential-helper plain-text
+;;                                   fallback (`git config credential.helper store`).
+
+(deny file-read*
+    (literal (string-append (param "HOME") "/.npmrc"))
+    (literal (string-append (param "HOME") "/.terraform.d/credentials.tfrc.json"))
+    (literal (string-append (param "HOME") "/.gem/credentials"))
+    (literal (string-append (param "HOME") "/.pypirc"))
+    (literal (string-append (param "HOME") "/.git-credentials"))
+    (literal (string-append (param "HOME") "/.config/git/credentials")))
+
+;; --- Network: deny inbound TCP/UDP connections, allow Unix-domain sockets ---
+;; opencode itself never legitimately listens on a TCP/UDP socket — it makes
+;; outbound HTTPS calls to its model provider.  Denying network-inbound
+;; removes the "agent opens a listener for attacker callback" shape of attack.
+;;
+;; HOWEVER: SBPL's network-inbound filter also catches Unix-domain sockets,
+;; which toolchains use heavily for in-process IPC:
+;;
+;;   - dotnet diagnostic socket (/var/folders/.../dotnet-diagnostic-<pid>-...-socket):
+;;       used by dotnet-counters / dotnet-trace and probed during startup.
+;;       Block it and MSBuild errors out silently — the underlying EPERM is
+;;       swallowed into a generic build failure with no diagnostic.
+;;   - MSBuild node communication (/private/tmp/MSBuild<pid>):
+;;       worker process IPC.  Block it and `dotnet build/test/format` hangs
+;;       or fails silently.
+;;   - SwiftPM, cargo, go test, ruff, pytest-xdist:
+;;       all use Unix sockets or named FIFOs in TMPDIR for worker IPC.
+;;
+;; So: deny inbound on IP sockets only, and explicitly allow Unix-socket
+;; bind + inbound.  Filesystem writes to the socket inode are already
+;; allowed via the /tmp and /var/folders subpaths above.
+
+(deny network-inbound (remote ip))
+(allow network-inbound (local unix-socket))
+(allow network-bind (local unix-socket))
+
+;; --- Process exec: block GUI-automation and screen/clipboard bridges ---
+;; Each of these binaries gives a CLI process unusual reach into the
+;; user's interactive session:
+;;
+;;   - osascript:     drives the AppleScript automation surface of every
+;;                    GUI app on the system (Mail, Messages, Safari,
+;;                    Keychain Access, Reminders, Notes, ...).  This is
+;;                    the standard lateral-movement primitive on macOS —
+;;                    a CLI sandbox that doesn't block it leaves a back
+;;                    door into every app the user is logged into.
+;;   - screencapture: takes a screenshot of the current display contents
+;;                    to a file the agent can then read and exfil — bypasses
+;;                    every file-read deny in this profile because the
+;;                    screen content isn't a file.
+;;   - pbpaste:       reads the system clipboard, which routinely holds
+;;                    tokens during normal developer work.
+;;   - pbcopy:        writes to the clipboard — less directly an exfil
+;;                    primitive but a natural pair to pbpaste and could be
+;;                    used to plant attacker-controlled content into the
+;;                    user's next paste.
+;;
+;; open(1) is intentionally NOT denied — it has legitimate use rendering
+;; URLs in the user's browser (`open https://...`), and is also a covert
+;; exfil channel.  The trade favours leaving it.  Same call for `say`,
+;; `say` is harmless on its own.
+
+(deny process-exec
+    (literal "/usr/bin/osascript")
+    (literal "/usr/sbin/screencapture")
+    (literal "/usr/bin/pbpaste")
+    (literal "/usr/bin/pbcopy"))
