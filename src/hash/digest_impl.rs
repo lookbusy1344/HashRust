@@ -1,6 +1,5 @@
 use std::fs::File;
 use std::io::Read;
-use std::path::Path;
 
 use byteorder::{BigEndian, ByteOrder};
 use data_encoding::{BASE32, BASE64};
@@ -11,16 +10,18 @@ use crate::core::types::{BasicHash, OutputEncoding};
 const BUFFER_SIZE: usize = 4096 * 8;
 
 fn hash_file<D: Digest>(filename: impl AsRef<str>) -> anyhow::Result<Output<D>> {
+    let mut file = File::open(filename.as_ref())?;
     // usize::try_from can only fail on 32-bit targets where usize < u64;
     // on those targets a file too large to fit in usize falls through to the
     // chunked path, which is the correct behaviour.
-    let filesize = usize::try_from(file_size(filename.as_ref())?).ok();
+    let filesize = usize::try_from(file.metadata()?.len()).ok();
 
     if filesize.is_some_and(|size| size <= BUFFER_SIZE) {
-        return hash_file_whole::<D>(filename);
+        let mut data = Vec::with_capacity(filesize.unwrap_or(0));
+        file.read_to_end(&mut data)?;
+        return Ok(D::digest(&data));
     }
 
-    let mut file = File::open(filename.as_ref())?;
     // 32KB is well within typical stack limits (2-8MB) and avoids heap allocation overhead
     #[allow(clippy::large_stack_arrays)]
     let mut buffer = [0u8; BUFFER_SIZE];
@@ -35,11 +36,6 @@ fn hash_file<D: Digest>(filename: impl AsRef<str>) -> anyhow::Result<Output<D>> 
     }
 
     Ok(hasher.finalize())
-}
-
-fn hash_file_whole<D: Digest>(filename: impl AsRef<str>) -> anyhow::Result<Output<D>> {
-    let data = std::fs::read(filename.as_ref())?;
-    Ok(D::digest(&data))
 }
 
 #[inline]
@@ -64,9 +60,4 @@ pub fn hash_file_encoded<D: Digest>(
             format!("{number:010}")
         }
     }))
-}
-
-fn file_size(path: impl AsRef<str>) -> anyhow::Result<u64> {
-    let path = Path::new(path.as_ref());
-    Ok(path.metadata()?.len())
 }
