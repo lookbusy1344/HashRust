@@ -59,6 +59,7 @@ pub enum OutputEncoding {
     Hex,
     Base64,
     Base32,
+    Base32Hex,
     U32,
 }
 

@@ -26,7 +26,7 @@ FLAGS:
     -n, --no-progress            Suppress progress display (for scripts)
 OPTIONS:
     -a, --algorithm [algorithm]  Hash algorithm to use
-    -e, --encoding [encoding]    Output encoding (Hex, Base64, Base32. Default is Hex)
+    -e, --encoding [encoding]    Output encoding (Hex, Base64, Base32, Base32Hex. Default is Hex)
     -l, --limit [num]            Limit number of files processed
     
 Algorithm can be:

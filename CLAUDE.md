@@ -44,7 +44,7 @@ HashRust is a CLI file hashing utility written in Rust that supports multiple ha
 
 ### Algorithm Support
 - CRC32: U32 format only (10-digit zero-padded)
-- All other algorithms: Hex (default), Base64, Base32 encoding
+- All other algorithms: Hex (default), Base64, Base32, Base32Hex (RFC 4648 §7) encoding
 - Default algorithm: SHA3-256
 
 ### Configuration

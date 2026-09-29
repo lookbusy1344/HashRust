@@ -43,7 +43,7 @@ Or pipe in a list of files:
 
 ```
     -a, --algorithm [algorithm]  Hash algorithm to use
-    -e, --encoding [encoding]    Encoding to use (hex, base64, base32)
+    -e, --encoding [encoding]    Encoding to use (hex, base64, base32, base32hex)
     -l, --limit [num]            Limit number of files processed (eg only process the first one)
 ```
 

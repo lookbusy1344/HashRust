@@ -2,7 +2,7 @@ use std::fs::File;
 use std::io::Read;
 
 use byteorder::{BigEndian, ByteOrder};
-use data_encoding::{BASE32, BASE64};
+use data_encoding::{BASE32, BASE32HEX, BASE64};
 use digest::{Digest, Output};
 
 use crate::core::types::{BasicHash, OutputEncoding};
@@ -49,6 +49,7 @@ pub fn hash_file_encoded<D: Digest>(
         OutputEncoding::Hex => hex::encode(h),
         OutputEncoding::Base64 => BASE64.encode(&h),
         OutputEncoding::Base32 => BASE32.encode(&h),
+        OutputEncoding::Base32Hex => BASE32HEX.encode(&h),
         OutputEncoding::U32 => {
             if h.len() != 4 {
                 return Err(anyhow::anyhow!(

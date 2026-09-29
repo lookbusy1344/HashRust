@@ -48,6 +48,14 @@ fn test_parse_hash_encoding_valid() {
         parse_hash_encoding(Some("Base32")).unwrap(),
         Some(OutputEncoding::Base32)
     );
+    assert_eq!(
+        parse_hash_encoding(Some("Base32Hex")).unwrap(),
+        Some(OutputEncoding::Base32Hex)
+    );
+    assert_eq!(
+        parse_hash_encoding(Some("base32hex")).unwrap(),
+        Some(OutputEncoding::Base32Hex)
+    );
 }
 
 #[test]
@@ -331,6 +339,35 @@ mod hash_tests {
             result.unwrap().as_str(),
             "9ece086e9bac491fac5c1d1046ca11d737b92a2b2ebd93f005d7b710110c0a678288166e7fbe796883a4f2e9b3ca9f484f521d0ce464345cc1aec96779149c14"
         );
+    }
+
+    #[test]
+    fn test_call_hasher_md5_base32hex_known_answer() {
+        let file = create_test_file_with_content(b"test");
+        let path = file.path().to_string_lossy().to_string();
+        let result = call_hasher(HashAlgorithm::MD5, OutputEncoding::Base32Hex, &path);
+        assert_eq!(result.unwrap().as_str(), "167MNJA6479N7IMU9Q1IC9TKUO======");
+    }
+
+    #[test]
+    fn test_call_hasher_base32hex_preserves_digest_order() {
+        // Base32hex keeps byte-wise sort order; plain Base32 does not.
+        let sample = |content: &[u8]| {
+            let file = create_test_file_with_content(content);
+            let path = file.path().to_string_lossy().to_string();
+            let encode = |encoding| {
+                call_hasher(HashAlgorithm::XXH128, encoding, &path)
+                    .unwrap()
+                    .into_inner()
+            };
+            (
+                encode(OutputEncoding::Hex),
+                encode(OutputEncoding::Base32Hex),
+            )
+        };
+        let mut samples: Vec<_> = (0..64u8).map(|i| sample(&[i])).collect();
+        samples.sort_by(|a, b| a.0.cmp(&b.0));
+        assert!(samples.windows(2).all(|w| w[0].1 <= w[1].1));
     }
 
     #[test]
