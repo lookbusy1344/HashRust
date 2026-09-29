@@ -28,6 +28,8 @@ pub enum HashAlgorithm {
     SHA2_224,
     #[strum(serialize = "SHA2-384", serialize = "SHA2_384")]
     SHA2_384,
+    #[strum(serialize = "SHA3-224", serialize = "SHA3_224")]
+    SHA3_224,
     #[strum(serialize = "SHA3", serialize = "SHA3-256", serialize = "SHA3_256")]
     SHA3_256,
     #[strum(serialize = "SHA2-512", serialize = "SHA2_512")]
@@ -36,6 +38,13 @@ pub enum HashAlgorithm {
     SHA3_384,
     #[strum(serialize = "SHA3-512", serialize = "SHA3_512")]
     SHA3_512,
+    #[strum(
+        serialize = "XXH128",
+        serialize = "XXH-128",
+        serialize = "XXH3-128",
+        serialize = "XXH3_128"
+    )]
+    XXH128,
     #[strum(serialize = "WHIRLPOOL")]
     Whirlpool,
     #[strum(serialize = "BLAKE2B-512", serialize = "BLAKE2B_512")]

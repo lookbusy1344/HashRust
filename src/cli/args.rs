@@ -12,7 +12,7 @@ pub fn process_command_line(mut pargs: Arguments) -> Result<ConfigSettings> {
     let algo_str: Option<String> = pargs.opt_value_from_str(["-a", "--algorithm"])?;
     let algo = parse_hash_algorithm(algo_str.as_deref()).map_err(|_| {
         anyhow!(
-        "Algorithm can be: CRC32, MD5, SHA1, SHA2 / SHA2-256 / SHA-256, SHA2-224, SHA2-384, SHA2-512, SHA3 / SHA3-256, SHA3-384, SHA3-512, WHIRLPOOL, BLAKE2S-256, BLAKE2B-512. Default is {DEFAULT_HASH:?}",
+        "Algorithm can be: CRC32, MD5, SHA1, SHA2 / SHA2-256 / SHA-256, SHA2-224, SHA2-384, SHA2-512, SHA3-224, SHA3 / SHA3-256, SHA3-384, SHA3-512, XXH128, WHIRLPOOL, BLAKE2S-256, BLAKE2B-512. Default is {DEFAULT_HASH:?}",
     )
     })?;
 

@@ -32,6 +32,7 @@ whirlpool = { default-features = false, version = "0.11" }
 blake2 = { default-features = false, version = "0.11.0-rc.6" }
 crc32fast = { default-features = false, version = "1.5" }
 indicatif = "0.18"
+twox-hash = { version = "2.1.4", default-features = false, features = ["xxhash3_128", "alloc"] }
 
 [dev-dependencies]
 tempfile = "3.27"

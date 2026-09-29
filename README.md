@@ -55,7 +55,8 @@ CRC32 can only be output as 32-bit integer, the `-e` option cannot be used with 
     MD5, SHA1,
     WHIRLPOOL, BLAKE2S-256, BLAKE2B-512,
     SHA2 / SHA2-256, SHA2-224, SHA2-384, SHA2-512, 
-    SHA3 / SHA3-256, SHA3-384, SHA3-512
+    SHA3-224, SHA3 / SHA3-256, SHA3-384, SHA3-512,
+    XXH128 (non-cryptographic)
 
     The default is SHA3-256
 ```

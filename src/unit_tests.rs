@@ -334,6 +334,51 @@ mod hash_tests {
     }
 
     #[test]
+    fn test_call_hasher_sha3_224_known_answer() {
+        let file = create_test_file_with_content(b"test");
+        let path = file.path().to_string_lossy().to_string();
+        let result = call_hasher(HashAlgorithm::SHA3_224, OutputEncoding::Hex, &path);
+        assert_eq!(
+            result.unwrap().as_str(),
+            "3797bf0afbbfca4a7bbba7602a2b552746876517a7f9b7ce2db0ae7b"
+        );
+    }
+
+    #[test]
+    fn test_call_hasher_xxh128_known_answer() {
+        let file = create_test_file_with_content(b"test");
+        let path = file.path().to_string_lossy().to_string();
+        let result = call_hasher(HashAlgorithm::XXH128, OutputEncoding::Hex, &path);
+        assert_eq!(result.unwrap().as_str(), "6c78e0e3bd51d358d01e758642b85fb8");
+    }
+
+    #[test]
+    fn test_call_hasher_xxh128_empty_file() {
+        let file = create_test_file_with_content(b"");
+        let path = file.path().to_string_lossy().to_string();
+        let result = call_hasher(HashAlgorithm::XXH128, OutputEncoding::Hex, &path);
+        assert_eq!(result.unwrap().as_str(), "99aa06d3014798d86001c324468d497f");
+    }
+
+    #[test]
+    fn test_call_hasher_xxh128_multi_chunk_file() {
+        // Larger than the read buffer, so the streaming path is used
+        let content: Vec<u8> = (0..100_000u32).map(|i| (i % 251) as u8).collect();
+        let file = create_test_file_with_content(&content);
+        let path = file.path().to_string_lossy().to_string();
+        let result = call_hasher(HashAlgorithm::XXH128, OutputEncoding::Hex, &path);
+        assert_eq!(result.unwrap().as_str(), "54182c58bbb1337c42c23aeead96750d");
+    }
+
+    #[test]
+    fn test_call_hasher_xxh128_base64_length() {
+        let file = create_test_file_with_content(b"test");
+        let path = file.path().to_string_lossy().to_string();
+        let result = call_hasher(HashAlgorithm::XXH128, OutputEncoding::Base64, &path);
+        assert_eq!(result.unwrap().as_str().len(), 24);
+    }
+
+    #[test]
     fn test_call_hasher_blake2b512_known_answer() {
         let file = create_test_file_with_content(b"test");
         let path = file.path().to_string_lossy().to_string();
@@ -722,4 +767,24 @@ mod glob_tests {
             assert!(!path.ends_with("subdir"));
         }
     }
+}
+
+#[test]
+fn test_hash_algorithm_from_str_new_algorithms() {
+    assert_eq!(
+        HashAlgorithm::from_str("sha3-224").unwrap(),
+        HashAlgorithm::SHA3_224
+    );
+    assert_eq!(
+        HashAlgorithm::from_str("SHA3_224").unwrap(),
+        HashAlgorithm::SHA3_224
+    );
+    assert_eq!(
+        HashAlgorithm::from_str("xxh128").unwrap(),
+        HashAlgorithm::XXH128
+    );
+    assert_eq!(
+        HashAlgorithm::from_str("XXH3-128").unwrap(),
+        HashAlgorithm::XXH128
+    );
 }
