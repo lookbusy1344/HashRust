@@ -30,7 +30,8 @@ OPTIONS:
     -l, --limit [num]            Limit number of files processed
     
 Algorithm can be:
-    CRC32, MD5, SHA1, WHIRLPOOL, BLAKE2S-256, BLAKE2B-512,
+    MD5, SHA1, WHIRLPOOL, BLAKE2S-256, BLAKE2B-512,
     SHA2 / SHA2-256 / SHA-256, SHA2-224, SHA2-384, SHA2-512,
-    SHA3-224, SHA3 / SHA3-256 (default), SHA3-384, SHA3-512,
-    XXH128 (non-cryptographic)";
+    SHA3-224, SHA3 / SHA3-256 (default), SHA3-384, SHA3-512
+
+    Non-cryptographic: CRC32, XXH128";
