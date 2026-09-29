@@ -7,6 +7,8 @@
 HashRust is a command-line util for hashing files. Supports `MD5, SHA1, SHA2, SHA3, Blake2, Whirlpool, XXH128` and `CRC32`.
 Multi-threaded by default using Rayon.
 
+This repo is managed with Jujutsu rather than Git. Try it out! https://docs.jj-vcs.dev/latest/
+
 ## Building
 
 ```cargo build -r```

@@ -2,6 +2,15 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Version control (read first)
+
+Before the first VCS command, run `jj --ignore-working-copy root`. This may be a jj repo on one machine and plain Git on another.
+
+**IMPORTANT:** if it succeeds, use `jj` for all VCS commands, including `log`, `show`, `status` and `diff`. Do not run `git` on jj repos. The `gitStatus` snapshot in the session context is not a reason to use git.
+
+jj has no commit hooks, so nothing enforces the pre-commit checks. Run them before `jj commit`, `jj describe` (when finalising a change) and `jj squash`.
+If a change touches only non-code files (`*.md`), skip the cargo steps.
+
 ## Project Overview
 
 HashRust is a CLI file hashing utility written in Rust that supports multiple hash algorithms (MD5, SHA1, SHA2, SHA3, Blake2, Whirlpool, CRC32, XXH128) with multi-threading via Rayon. Modular architecture with separate modules for hashing logic, algorithm types, and CLI processing.
@@ -72,3 +81,4 @@ gtimeout 60 cargo nextest run
 (test fallback: `gtimeout 60 cargo test`)
 
 Also run `cargo audit` at least once per working session.
+
