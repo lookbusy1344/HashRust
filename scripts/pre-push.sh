@@ -40,9 +40,15 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-cd "$(jj --ignore-working-copy root)"
+# Git-only checkouts rely on CI.
+if ! root="$(jj --ignore-working-copy root 2> /dev/null)"; then
+    echo "==> jj not installed or not a jj repository, skipping pre-push checks."
+    exit 0
+fi
+cd "${root}"
 
-if [[ -z "$(jj log --no-graph -r "${STACK}" -T 'change_id ++ "\n"')" ]]; then
+stack="$(jj log --no-graph -r "${STACK}" -T 'change_id ++ "\n"')"
+if [[ -z "${stack}" ]]; then
     echo "==> No non-empty mutable revisions in ${STACK}, nothing to check."
     exit 0
 fi

@@ -29,7 +29,7 @@ if ! "${PROJECT_DIR}/scripts/pre-push.sh" > "${log}" 2>&1; then
 fi
 
 # rg exits 1 on no match; the no-op path runs no tests.
-checked="$({ rg '^==> (Checking|No non-empty)' "${log}" || true; } | sed 's/^==> //' | paste -sd ';' -)"
+checked="$({ rg '^==> (Checking|No non-empty|jj not installed)' "${log}" || true; } | sed 's/^==> //' | paste -sd ';' -)"
 tests="$({ rg -o '[0-9]+ tests run: .*' "${log}" || true; } | tail -n 1)"
 message="Pre-push checks passed: ${checked}${tests:+ (${tests})}"
 
