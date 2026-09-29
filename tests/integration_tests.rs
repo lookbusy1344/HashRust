@@ -2,6 +2,11 @@ use std::io::Write;
 use std::process::{Command, Stdio};
 use tempfile::NamedTempFile;
 
+/// Command for the `hash_rust` binary Cargo built for this test run
+fn hash_rust() -> Command {
+    Command::new(env!("CARGO_BIN_EXE_hash_rust"))
+}
+
 /// Helper function to create a temporary file with content
 fn create_temp_file(content: &str) -> NamedTempFile {
     let mut temp_file = NamedTempFile::new().expect("Failed to create temp file");
@@ -19,8 +24,8 @@ fn test_sha3_256_hash() {
     let test_path = test_file.path();
 
     // Run the hash_rust binary with SHA3-256 (default)
-    let output = Command::new("cargo")
-        .args(["run", "--", test_path.to_str().unwrap()])
+    let output = hash_rust()
+        .arg(test_path.to_str().unwrap())
         .output()
         .expect("Failed to execute hash_rust");
 
@@ -39,8 +44,8 @@ fn test_md5_hash() {
     let test_file = create_temp_file(test_content);
     let test_path = test_file.path();
 
-    let output = Command::new("cargo")
-        .args(["run", "--", "-a", "MD5", test_path.to_str().unwrap()])
+    let output = hash_rust()
+        .args(["-a", "MD5", test_path.to_str().unwrap()])
         .output()
         .expect("Failed to execute hash_rust");
 
@@ -57,8 +62,8 @@ fn test_crc32_hash() {
     let test_file = create_temp_file(test_content);
     let test_path = test_file.path();
 
-    let output = Command::new("cargo")
-        .args(["run", "--", "-a", "CRC32", test_path.to_str().unwrap()])
+    let output = hash_rust()
+        .args(["-a", "CRC32", test_path.to_str().unwrap()])
         .output()
         .expect("Failed to execute hash_rust");
 
@@ -78,8 +83,8 @@ fn test_exclude_filenames() {
     let test_file = create_temp_file(test_content);
     let test_path = test_file.path();
 
-    let output = Command::new("cargo")
-        .args(["run", "--", "-x", test_path.to_str().unwrap()])
+    let output = hash_rust()
+        .args(["-x", test_path.to_str().unwrap()])
         .output()
         .expect("Failed to execute hash_rust");
 
@@ -98,8 +103,8 @@ fn test_base64_encoding() {
     let test_file = create_temp_file(test_content);
     let test_path = test_file.path();
 
-    let output = Command::new("cargo")
-        .args(["run", "--", "-e", "Base64", test_path.to_str().unwrap()])
+    let output = hash_rust()
+        .args(["-e", "Base64", test_path.to_str().unwrap()])
         .output()
         .expect("Failed to execute hash_rust");
 
@@ -116,8 +121,8 @@ fn test_nonexistent_file_error() {
     let temp_dir = std::env::temp_dir();
     let nonexistent_file = temp_dir.join("nonexistent_file.txt");
 
-    let output = Command::new("cargo")
-        .args(["run", "--", nonexistent_file.to_str().unwrap()])
+    let output = hash_rust()
+        .arg(nonexistent_file.to_str().unwrap())
         .output()
         .expect("Failed to execute hash_rust");
 
@@ -137,14 +142,8 @@ fn test_invalid_algorithm_error() {
     let test_file = create_temp_file(test_content);
     let test_path = test_file.path();
 
-    let output = Command::new("cargo")
-        .args([
-            "run",
-            "--",
-            "-a",
-            "INVALID_ALGORITHM",
-            test_path.to_str().unwrap(),
-        ])
+    let output = hash_rust()
+        .args(["-a", "INVALID_ALGORITHM", test_path.to_str().unwrap()])
         .output()
         .expect("Failed to execute hash_rust");
 
@@ -162,14 +161,8 @@ fn test_invalid_encoding_error() {
     let test_file = create_temp_file(test_content);
     let test_path = test_file.path();
 
-    let output = Command::new("cargo")
-        .args([
-            "run",
-            "--",
-            "-e",
-            "INVALID_ENCODING",
-            test_path.to_str().unwrap(),
-        ])
+    let output = hash_rust()
+        .args(["-e", "INVALID_ENCODING", test_path.to_str().unwrap()])
         .output()
         .expect("Failed to execute hash_rust");
 
@@ -188,16 +181,8 @@ fn test_crc32_with_invalid_encoding_error() {
     let test_path = test_file.path();
 
     // CRC32 should only work with Hex encoding (U32 format)
-    let output = Command::new("cargo")
-        .args([
-            "run",
-            "--",
-            "-a",
-            "CRC32",
-            "-e",
-            "Base64",
-            test_path.to_str().unwrap(),
-        ])
+    let output = hash_rust()
+        .args(["-a", "CRC32", "-e", "Base64", test_path.to_str().unwrap()])
         .output()
         .expect("Failed to execute hash_rust");
 
@@ -215,16 +200,8 @@ fn test_u32_encoding_with_non_crc32_error() {
     let test_file = create_temp_file(test_content);
     let test_path = test_file.path();
 
-    let output = Command::new("cargo")
-        .args([
-            "run",
-            "--",
-            "-a",
-            "MD5",
-            "-e",
-            "U32",
-            test_path.to_str().unwrap(),
-        ])
+    let output = hash_rust()
+        .args(["-a", "MD5", "-e", "U32", test_path.to_str().unwrap()])
         .output()
         .expect("Failed to execute hash_rust");
 
@@ -240,10 +217,7 @@ fn test_u32_encoding_with_non_crc32_error() {
 #[test]
 fn test_empty_file_path_error() {
     // Test with no file arguments
-    let output = Command::new("cargo")
-        .args(["run", "--"])
-        .output()
-        .expect("Failed to execute hash_rust");
+    let output = hash_rust().output().expect("Failed to execute hash_rust");
 
     // Should fail with non-zero exit code or show help
     // This might succeed if it reads from stdin, so we check for either error or help output
@@ -255,8 +229,8 @@ fn test_empty_file_path_error() {
 
 #[test]
 fn test_help_flag() {
-    let output = Command::new("cargo")
-        .args(["run", "--", "--help"])
+    let output = hash_rust()
+        .arg("--help")
         .output()
         .expect("Failed to execute hash_rust");
 
@@ -279,12 +253,10 @@ fn test_multi_file_parallel_hashing() {
         .collect();
 
     // Build args with all file paths
-    let mut args = vec!["run", "--"];
     let paths: Vec<_> = files.iter().map(|f| f.path().to_str().unwrap()).collect();
-    args.extend(&paths);
 
-    let output = Command::new("cargo")
-        .args(&args)
+    let output = hash_rust()
+        .args(&paths)
         .output()
         .expect("Failed to execute hash_rust");
 
@@ -322,11 +294,11 @@ fn test_overall_progress_bar_path_with_many_files() {
         .map(|i| create_temp_file(&format!("content {i}")))
         .collect();
 
-    let mut args = vec!["run", "--", "--no-progress"];
+    let mut args = vec!["--no-progress"];
     let paths: Vec<_> = files.iter().map(|f| f.path().to_str().unwrap()).collect();
     args.extend(&paths);
 
-    let output = Command::new("cargo")
+    let output = hash_rust()
         .args(&args)
         .output()
         .expect("Failed to execute hash_rust");
@@ -359,8 +331,7 @@ fn test_stdin_file_paths() {
     );
 
     // Run with paths from stdin
-    let mut child = Command::new("cargo")
-        .args(["run", "--"])
+    let mut child = hash_rust()
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
@@ -407,8 +378,7 @@ fn test_stdin_with_nonexistent_paths() {
         valid_file.path().display()
     );
 
-    let mut child = Command::new("cargo")
-        .args(["run", "--"])
+    let mut child = hash_rust()
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
@@ -448,8 +418,8 @@ fn test_unreadable_file_exits_nonzero() {
     fs::set_permissions(&path, fs::Permissions::from_mode(0o000))
         .expect("Failed to set permissions");
 
-    let output = Command::new("cargo")
-        .args(["run", "--", path.to_str().unwrap()])
+    let output = hash_rust()
+        .arg(path.to_str().unwrap())
         .output()
         .expect("Failed to execute hash_rust");
 
@@ -474,8 +444,7 @@ fn test_stdin_io_error_always_reported_to_stderr() {
 
     let stdin_input = format!("{}\n", file.path().display());
 
-    let mut child = Command::new("cargo")
-        .args(["run", "--"])
+    let mut child = hash_rust()
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
@@ -504,10 +473,8 @@ fn test_error_help_goes_to_stderr_not_stdout() {
     // stderr so that stdout stays clean for piped consumers.
     let temp_file = create_temp_file("test");
 
-    let output = Command::new("cargo")
+    let output = hash_rust()
         .args([
-            "run",
-            "--",
             "-a",
             "INVALID_ALGORITHM",
             temp_file.path().to_str().unwrap(),
