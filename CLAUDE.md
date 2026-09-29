@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-HashRust is a CLI file hashing utility written in Rust that supports multiple hash algorithms (MD5, SHA1, SHA2, SHA3, Blake2, Whirlpool, CRC32) with multi-threading via Rayon. Modular architecture with separate modules for hashing logic, algorithm types, and CLI processing.
+HashRust is a CLI file hashing utility written in Rust that supports multiple hash algorithms (MD5, SHA1, SHA2, SHA3, Blake2, Whirlpool, CRC32, XXH128) with multi-threading via Rayon. Modular architecture with separate modules for hashing logic, algorithm types, and CLI processing.
 
 ## Common Commands
 

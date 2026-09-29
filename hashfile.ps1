@@ -19,7 +19,7 @@ param (
         ValueFromPipeline = $true, ValueFromPipelineByPropertyName = $true)]
     [string[]]$inputfile,
 
-    # algorithm, eg MD5, SHA1, SHA256, SHA384, SHA512, SHA3-256, SHA3-384, SHA3-512
+    # algorithm, eg MD5, SHA1, SHA2-256, SHA2-512, SHA3-256, SHA3-512, BLAKE2B-512, XXH128, CRC32
     [string]$algorithm = "SHA3",
 
     # limit the number of files to hash

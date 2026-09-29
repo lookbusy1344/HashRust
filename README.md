@@ -37,6 +37,7 @@ Or pipe in a list of files:
     -c, --case-sensitive         Case-sensitive glob matching
     -x, --exclude-filenames      Exclude filenames from output
     -s, --single-thread          Single-threaded (not multi-threaded)
+    -n, --no-progress            Suppress progress display (for scripts)
 ```
 
 ## Options
