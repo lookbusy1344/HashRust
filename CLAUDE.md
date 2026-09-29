@@ -8,8 +8,10 @@ Before the first VCS command, run `jj --ignore-working-copy root`. This may be a
 
 **IMPORTANT:** if it succeeds, use `jj` for all VCS commands, including `log`, `show`, `status` and `diff`. Do not run `git` on jj repos. The `gitStatus` snapshot in the session context is not a reason to use git.
 
-jj has no commit hooks, so nothing enforces the pre-commit checks. Run them before `jj commit`, `jj describe` (when finalising a change) and `jj squash`.
+jj has no commit hooks. Run the pre-commit checks before `jj commit`, `jj describe` (when finalising a change) and `jj squash`.
 If a change touches only non-code files (`*.md`), skip the cargo steps.
+
+Before `jj git push` or moving a shared bookmark, run `scripts/pre-push.sh`. By default it formats the tip (newest non-empty mutable revision) with `jj fix`, then runs fmt check, build, clippy and nextest on it. `--full` formats every mutable revision in `::@` and checks each in its own checkout via `jj run`. `scripts/agent-pre-push-hook.sh` runs the tip check on every push command and blocks the push on failure. Claude Code (`.claude/settings.json`) and Codex (`.codex/hooks.json`) call it as a `PreToolUse` hook. The hook checks the tip of `@`, not the bookmark being pushed: move `@` onto a branch before pushing it. CI runs fmt, clippy, build and tests on every pushed branch.
 
 ## Project Overview
 
@@ -27,7 +29,7 @@ HashRust is a CLI file hashing utility written in Rust that supports multiple ha
 - `cargo test` - Fallback if nextest unavailable
 
 ### Code Quality
-- `cargo clippy --all-targets --all-features -- -D clippy::all -D clippy::pedantic -F unsafe_code`
+- `cargo clippy --all-targets --all-features` - lint levels (`clippy::all`, `clippy::pedantic` deny; `unsafe_code` forbid) live in `Cargo.toml` `[lints]`
 - `cargo fmt`
 
 ### Running
@@ -73,7 +75,7 @@ Before every commit, run these in order — **all must pass cleanly**:
 
 ```
 cargo build
-cargo clippy --all-targets --all-features -- -D clippy::all -D clippy::pedantic -F unsafe_code
+cargo clippy --all-targets --all-features
 cargo fmt
 gtimeout 60 cargo nextest run
 ```

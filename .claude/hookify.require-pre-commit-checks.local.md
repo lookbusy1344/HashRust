@@ -18,7 +18,7 @@ Before proceeding, run `git diff --cached --name-only` to inspect staged files.
 
 ```bash
 cargo build
-cargo clippy --all-targets --all-features -- -D clippy::all -D clippy::pedantic -F unsafe_code
+cargo clippy --all-targets --all-features
 cargo fmt
 gtimeout 60 cargo nextest run
 ```

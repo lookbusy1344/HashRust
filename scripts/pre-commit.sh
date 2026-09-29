@@ -90,7 +90,7 @@ fi
 echo "==> Running HashRust pre-commit checks..."
 
 run cargo build
-run cargo clippy --all-targets --all-features -- -D clippy::all -D clippy::pedantic -F unsafe_code
+run cargo clippy --all-targets --all-features
 run cargo fmt --check
 
 run gtimeout "${TEST_TIMEOUT_SECONDS}" cargo nextest run

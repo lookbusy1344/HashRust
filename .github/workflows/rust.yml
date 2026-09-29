@@ -6,13 +6,12 @@ permissions:
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "**" ]
 #  pull_request:
 #    branches: [ "main" ]
 
 env:
   CARGO_TERM_COLOR: always
-  RUSTFLAGS: "-F unsafe_code"
 
 jobs:
   build:
@@ -21,7 +20,11 @@ jobs:
 
     steps:
     - uses: actions/checkout@v5
+    - name: Check formatting
+      run: cargo fmt --check
     - name: Build
       run: cargo build --verbose
+    - name: Clippy
+      run: cargo clippy --all-targets --all-features
     - name: Run tests
       run: cargo test --verbose

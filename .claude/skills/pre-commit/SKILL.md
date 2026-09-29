@@ -9,7 +9,7 @@ Before every commit, run these in order — **all must pass cleanly**:
 
 ```
 cargo build
-cargo clippy --all-targets --all-features -- -D clippy::all -D clippy::pedantic -F unsafe_code
+cargo clippy --all-targets --all-features
 cargo fmt
 gtimeout 60 cargo nextest run
 ```
