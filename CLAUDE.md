@@ -15,6 +15,10 @@ Before `jj git push` or moving a shared bookmark, run `scripts/pre-push.sh`. By 
 
 Push only on explicit request. "Push this" means: if `@` is non-empty, `jj commit` it (after the pre-commit checks). Move the bookmark to `@-` with `jj bookmark set <name> -r @-`, then `jj git push --bookmark <name>`. Use the feature bookmark already on the stack; otherwise `main`. Do not use `jj git push -c`.
 
+## Personal information
+
+Exclude PII from every commit, commit message and bookmark name: real names, email addresses, usernames, machine paths such as `/Users/<name>/`, hostnames, tokens and credentials. Check the diff before `jj commit`, `jj describe` (finalising) and `git commit`.
+
 ## Project Overview
 
 HashRust is a CLI file hashing utility written in Rust that supports multiple hash algorithms (MD5, SHA1, SHA2, SHA3, Blake2, Whirlpool, CRC32, XXH128) with multi-threading via Rayon. Modular architecture with separate modules for hashing logic, algorithm types, and CLI processing.
@@ -85,4 +89,3 @@ gtimeout 60 cargo nextest run
 (test fallback: `gtimeout 60 cargo test`)
 
 Also run `cargo audit` at least once per working session.
-
