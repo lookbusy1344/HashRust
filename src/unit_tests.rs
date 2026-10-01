@@ -100,7 +100,7 @@ fn test_config_settings_new() {
     assert_eq!(config.algorithm, HashAlgorithm::SHA3_256);
     assert_eq!(config.encoding, OutputEncoding::Hex);
     assert_eq!(config.limit_num, Some(100));
-    assert!(config.supplied_paths.is_empty());
+    assert_eq!(config.supplied_paths, Vec::<String>::new());
 }
 
 #[test]
