@@ -101,41 +101,15 @@ where
 
     let stdout = io::stdout();
     let mut out = BufWriter::new(stdout.lock());
-    let mut had_error = false;
 
-    for pathstr in paths {
+    // Lazy iterator: each file is hashed only when its line is about to be written
+    let results = paths.iter().map(|pathstr| {
         let file_hash =
             hash_with_progress(config, AsRef::<str>::as_ref(pathstr), coordinator.as_ref());
+        (pathstr, file_hash)
+    });
 
-        match file_hash {
-            Ok(basic_hash) => {
-                match print_hash_line(&mut out, &basic_hash, pathstr, config.exclude_fn) {
-                    Ok(()) => {}
-                    Err(e) if e.kind() == io::ErrorKind::BrokenPipe => {
-                        let _ = out.flush();
-                        return false;
-                    }
-                    Err(e) => {
-                        eprintln!("Write error: {e}");
-                        had_error = true;
-                    }
-                }
-            }
-            Err(e) => {
-                eprintln!("File error for '{pathstr}': {e}");
-                had_error = true;
-            }
-        }
-    }
-
-    if let Err(e) = out.flush()
-        && e.kind() != io::ErrorKind::BrokenPipe
-    {
-        eprintln!("Write error: {e}");
-        had_error = true;
-    }
-
-    had_error
+    write_results(&mut out, results, config.exclude_fn)
 }
 
 fn file_hashes_mt<S>(config: &ConfigSettings, paths: &[S]) -> bool
@@ -184,24 +158,34 @@ where
 
     let stdout = io::stdout();
     let mut out = BufWriter::new(stdout.lock());
+
+    write_results(&mut out, results, config.exclude_fn)
+}
+
+/// Writes one line per successful hash and reports failures on stderr.
+///
+/// Returns `true` if any file failed to hash or any line failed to write.
+/// A broken pipe stops output early.
+fn write_results<P: Display>(
+    out: &mut impl Write,
+    results: impl IntoIterator<Item = (P, Result<BasicHash>)>,
+    exclude_fn: bool,
+) -> bool {
     let mut had_error = false;
 
     for (pathstr, file_hash) in results {
         match file_hash {
-            Ok(basic_hash) => {
-                match print_hash_line(&mut out, &basic_hash, pathstr, config.exclude_fn) {
-                    Ok(()) => {}
-                    Err(e) if e.kind() == io::ErrorKind::BrokenPipe => {
-                        let _ = out.flush();
-                        return false;
-                    }
-                    Err(e) => {
-                        eprintln!("Write error: {e}");
-                        had_error = true;
-                    }
+            Ok(basic_hash) => match print_hash_line(out, &basic_hash, &pathstr, exclude_fn) {
+                Ok(()) => {}
+                Err(e) if e.kind() == io::ErrorKind::BrokenPipe => {
+                    let _ = out.flush();
+                    return had_error;
                 }
-            }
-
+                Err(e) => {
+                    eprintln!("Write error: {e}");
+                    had_error = true;
+                }
+            },
             Err(e) => {
                 eprintln!("File error for '{pathstr}': {e}");
                 had_error = true;
@@ -286,5 +270,20 @@ mod tests {
         let mut buf = Vec::new();
         print_hash_line(&mut buf, &hash, &"file.txt", true).unwrap();
         assert_eq!(buf, b"abc123\n");
+    }
+
+    #[test]
+    fn test_write_results_broken_pipe_keeps_earlier_error() {
+        let results = [
+            ("bad.txt", Err(anyhow::anyhow!("unreadable"))),
+            ("good.txt", Ok(BasicHash::new("abc123".to_string()))),
+        ];
+        assert!(write_results(&mut BrokenPipeWriter, results, false));
+    }
+
+    #[test]
+    fn test_write_results_broken_pipe_without_error_is_success() {
+        let results = [("good.txt", Ok(BasicHash::new("abc123".to_string())))];
+        assert!(!write_results(&mut BrokenPipeWriter, results, false));
     }
 }
