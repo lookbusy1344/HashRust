@@ -137,6 +137,35 @@ fn test_nonexistent_file_error() {
 }
 
 #[test]
+fn test_missing_file_argument_does_not_stop_other_files() {
+    let good = create_temp_file("test");
+    let missing = std::env::temp_dir().join("hash_rust_missing_argument.txt");
+
+    let output = hash_rust()
+        .args([
+            "-n",
+            "-a",
+            "MD5",
+            good.path().to_str().unwrap(),
+            missing.to_str().unwrap(),
+        ])
+        .output()
+        .expect("Failed to execute hash_rust");
+
+    assert!(!output.status.success());
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let stderr = String::from_utf8_lossy(&output.stderr);
+
+    // MD5 of "test"
+    assert!(stdout.contains("098f6bcd4621d373cade4e832627b4f6"));
+    assert!(stderr.contains("hash_rust_missing_argument.txt"));
+    assert!(
+        !stderr.contains("USAGE"),
+        "A missing file is not a usage error, got: {stderr}"
+    );
+}
+
+#[test]
 fn test_invalid_algorithm_error() {
     let test_content = "test";
     let test_file = create_temp_file(test_content);
@@ -396,13 +425,67 @@ fn test_stdin_with_nonexistent_paths() {
         .wait_with_output()
         .expect("Failed to wait on hash_rust");
 
-    // Should succeed but only hash the valid file
-    assert!(output.status.success());
+    // The valid file is hashed; the missing ones are reported and fail the run
+    assert!(!output.status.success());
     let stdout = String::from_utf8_lossy(&output.stdout);
+    let stderr = String::from_utf8_lossy(&output.stderr);
 
-    // Should have output for only 1 valid file
     let lines: Vec<_> = stdout.lines().filter(|l| !l.is_empty()).collect();
     assert_eq!(lines.len(), 1, "Should only hash the valid file");
+    assert!(stderr.contains("/nonexistent/file1.txt"), "got: {stderr}");
+    assert!(stderr.contains("/nonexistent/file2.txt"), "got: {stderr}");
+}
+
+#[test]
+fn test_stdin_directory_is_skipped() {
+    let dir = tempfile::TempDir::new().expect("Failed to create temp dir");
+    let stdin_input = format!("{}\n", dir.path().display());
+
+    let mut child = hash_rust()
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .expect("Failed to spawn hash_rust");
+
+    if let Some(mut stdin) = child.stdin.take() {
+        stdin
+            .write_all(stdin_input.as_bytes())
+            .expect("Failed to write to stdin");
+    }
+
+    let output = child
+        .wait_with_output()
+        .expect("Failed to wait on hash_rust");
+
+    assert!(output.status.success());
+    assert_eq!(String::from_utf8_lossy(&output.stdout), "");
+}
+
+#[test]
+#[cfg(unix)]
+fn test_glob_unreadable_directory_reported() {
+    use std::fs;
+    use std::os::unix::fs::PermissionsExt;
+
+    let dir = tempfile::TempDir::new().expect("Failed to create temp dir");
+    let locked = dir.path().join("locked");
+    fs::create_dir(&locked).expect("Failed to create dir");
+    fs::write(locked.join("inner.txt"), b"x").expect("Failed to write file");
+    fs::set_permissions(&locked, fs::Permissions::from_mode(0o000))
+        .expect("Failed to set permissions");
+
+    let pattern = format!("{}/*/*.txt", dir.path().display());
+    let output = hash_rust()
+        .args(["-n", &pattern])
+        .output()
+        .expect("Failed to execute hash_rust");
+
+    fs::set_permissions(&locked, fs::Permissions::from_mode(0o755))
+        .expect("Failed to restore permissions");
+
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(stderr.contains("locked"), "got: {stderr}");
 }
 
 #[test]
@@ -494,5 +577,52 @@ fn test_error_help_goes_to_stderr_not_stdout() {
     assert!(
         stderr.contains("USAGE"),
         "Help text must appear on stderr, got: {stderr}"
+    );
+}
+
+// Character devices and FIFOs are not hashed: reading them can block or never end.
+#[test]
+#[cfg(unix)]
+fn test_special_file_from_stdin_is_skipped() {
+    let file = create_temp_file("test");
+    let stdin_input = format!("/dev/null\n{}\n", file.path().display());
+
+    let mut child = hash_rust()
+        .args(["-n", "-x", "-a", "MD5"])
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .spawn()
+        .expect("Failed to spawn hash_rust");
+    if let Some(mut stdin) = child.stdin.take() {
+        stdin
+            .write_all(stdin_input.as_bytes())
+            .expect("Failed to write to stdin");
+    }
+    let output = child
+        .wait_with_output()
+        .expect("Failed to wait on hash_rust");
+
+    assert!(output.status.success());
+    assert_eq!(
+        String::from_utf8_lossy(&output.stdout).trim(),
+        "098f6bcd4621d373cade4e832627b4f6"
+    );
+}
+
+#[test]
+#[cfg(unix)]
+fn test_special_file_argument_is_skipped() {
+    let file = create_temp_file("test");
+
+    let output = hash_rust()
+        .args(["-n", "-x", "-a", "MD5", "/dev/null"])
+        .arg(file.path())
+        .output()
+        .expect("Failed to execute hash_rust");
+
+    assert!(output.status.success());
+    assert_eq!(
+        String::from_utf8_lossy(&output.stdout).trim(),
+        "098f6bcd4621d373cade4e832627b4f6"
     );
 }

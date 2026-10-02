@@ -44,7 +44,7 @@ pub fn worker_func(config: &ConfigSettings) -> Result<()> {
         show_initial_info(config);
     }
 
-    let paths = get_required_filenames(config)?;
+    let paths = get_required_filenames(config);
 
     if paths.is_empty() {
         if config.debug_mode {

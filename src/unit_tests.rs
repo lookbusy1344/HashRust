@@ -510,10 +510,7 @@ mod glob_tests {
             supplied_paths: vec![pattern],
         };
 
-        let result = get_required_filenames(&config);
-        assert!(result.is_ok());
-
-        let paths = result.unwrap();
+        let paths = get_required_filenames(&config);
         assert_eq!(paths.len(), 2); // test1.txt and test2.txt (not Test3.TXT)
     }
 
@@ -535,10 +532,7 @@ mod glob_tests {
             supplied_paths: vec![pattern],
         };
 
-        let result = get_required_filenames(&config);
-        assert!(result.is_ok());
-
-        let paths = result.unwrap();
+        let paths = get_required_filenames(&config);
         assert_eq!(paths.len(), 3); // test1.txt, test2.txt, and Test3.TXT
     }
 
@@ -560,10 +554,7 @@ mod glob_tests {
             supplied_paths: vec![pattern],
         };
 
-        let result = get_required_filenames(&config);
-        assert!(result.is_ok());
-
-        let paths = result.unwrap();
+        let paths = get_required_filenames(&config);
         assert_eq!(paths.len(), 1);
         assert!(paths[0].ends_with("file.md"));
     }
@@ -586,10 +577,7 @@ mod glob_tests {
             supplied_paths: vec![pattern],
         };
 
-        let result = get_required_filenames(&config);
-        assert!(result.is_ok());
-
-        let paths = result.unwrap();
+        let paths = get_required_filenames(&config);
         assert_eq!(paths.len(), 0); // No .xyz files
     }
 
@@ -611,10 +599,7 @@ mod glob_tests {
             supplied_paths: vec![literal_path.clone()],
         };
 
-        let result = get_required_filenames(&config);
-        assert!(result.is_ok());
-
-        let paths = result.unwrap();
+        let paths = get_required_filenames(&config);
         assert_eq!(paths.len(), 1);
         assert_eq!(paths[0], literal_path);
     }
@@ -637,12 +622,36 @@ mod glob_tests {
             algorithm: HashAlgorithm::SHA3_256,
             encoding: OutputEncoding::Hex,
             limit_num: None,
-            supplied_paths: vec![nonexistent],
+            supplied_paths: vec![nonexistent.clone()],
         };
 
-        let result = get_required_filenames(&config);
-        assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("File not found"));
+        // Missing literals pass through; hashing reports them per file
+        let paths = get_required_filenames(&config);
+        assert_eq!(paths, vec![nonexistent]);
+    }
+
+    #[test]
+    fn test_literal_file_with_glob_chars_preferred_over_match() {
+        let temp_dir = TempDir::new().expect("Failed to create temp dir");
+        let base_path = temp_dir.path();
+        fs::write(base_path.join("f[1].txt"), b"literal").unwrap();
+        fs::write(base_path.join("f1.txt"), b"glob match").unwrap();
+
+        let literal_path = base_path.join("f[1].txt").to_string_lossy().to_string();
+        let config = ConfigSettings {
+            debug_mode: false,
+            exclude_fn: false,
+            single_thread: false,
+            case_sensitive: true,
+            no_progress: false,
+            algorithm: HashAlgorithm::SHA3_256,
+            encoding: OutputEncoding::Hex,
+            limit_num: None,
+            supplied_paths: vec![literal_path.clone()],
+        };
+
+        let paths = get_required_filenames(&config);
+        assert_eq!(paths, vec![literal_path]);
     }
 
     #[test]
@@ -663,10 +672,8 @@ mod glob_tests {
             supplied_paths: vec![dir_path],
         };
 
-        let result = get_required_filenames(&config);
         // Should return empty list or error (directory is ignored in non-debug mode)
-        assert!(result.is_ok());
-        let paths = result.unwrap();
+        let paths = get_required_filenames(&config);
         assert_eq!(paths.len(), 0);
     }
 
@@ -689,10 +696,7 @@ mod glob_tests {
             supplied_paths: vec![pattern1, pattern2],
         };
 
-        let result = get_required_filenames(&config);
-        assert!(result.is_ok());
-
-        let paths = result.unwrap();
+        let paths = get_required_filenames(&config);
         assert_eq!(paths.len(), 3); // 2 .txt files + 1 .md file
     }
 
@@ -714,10 +718,7 @@ mod glob_tests {
             supplied_paths: vec![pattern],
         };
 
-        let result = get_required_filenames(&config);
-        assert!(result.is_ok());
-
-        let paths = result.unwrap();
+        let paths = get_required_filenames(&config);
         assert_eq!(paths.len(), 2); // Limited to 2 files
     }
 
@@ -741,10 +742,7 @@ mod glob_tests {
             supplied_paths: vec![pattern1, pattern2],
         };
 
-        let result = get_required_filenames(&config);
-        assert!(result.is_ok());
-
-        let paths = result.unwrap();
+        let paths = get_required_filenames(&config);
         let mut unique = std::collections::HashSet::new();
         for path in &paths {
             assert!(unique.insert(path.clone()), "duplicate path: {path}");
@@ -769,11 +767,30 @@ mod glob_tests {
             supplied_paths: vec![literal.clone(), literal],
         };
 
-        let result = get_required_filenames(&config);
-        assert!(result.is_ok());
-
-        let paths = result.unwrap();
+        let paths = get_required_filenames(&config);
         assert_eq!(paths.len(), 1);
+    }
+
+    #[test]
+    fn test_dedup_leading_current_dir() {
+        let config = ConfigSettings {
+            debug_mode: false,
+            exclude_fn: false,
+            single_thread: false,
+            case_sensitive: true,
+            no_progress: false,
+            algorithm: HashAlgorithm::SHA3_256,
+            encoding: OutputEncoding::Hex,
+            limit_num: None,
+            supplied_paths: vec![
+                "./hash_rust_missing.txt".to_string(),
+                "hash_rust_missing.txt".to_string(),
+            ],
+        };
+
+        let paths = get_required_filenames(&config);
+        // First spelling wins and is kept as given
+        assert_eq!(paths, vec!["./hash_rust_missing.txt".to_string()]);
     }
 
     #[test]
@@ -795,10 +812,7 @@ mod glob_tests {
             supplied_paths: vec![pattern],
         };
 
-        let result = get_required_filenames(&config);
-        assert!(result.is_ok());
-
-        let paths = result.unwrap();
+        let paths = get_required_filenames(&config);
         // Should only include files, not the 'subdir' directory
         for path in &paths {
             assert!(!path.ends_with("subdir"));
