@@ -51,11 +51,7 @@ pub fn process_command_line(
 
     let remaining_args = args_finished(pargs)?;
 
-    let supplied_paths = remaining_args
-        .into_iter()
-        .chain(trailing_paths)
-        .map(|arg| arg.to_string_lossy().to_string())
-        .collect();
+    let supplied_paths = remaining_args.into_iter().chain(trailing_paths).collect();
 
     let config = ConfigSettings {
         debug_mode,

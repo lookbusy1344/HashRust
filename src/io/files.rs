@@ -1,11 +1,14 @@
+use std::ffi::OsStr;
 use std::io::{self, BufRead};
 use std::path::{Component, Path, PathBuf};
 
 use crate::cli::config::ConfigSettings;
 
 const GLOB_WILDCARDS: [char; 4] = ['*', '?', '[', ']'];
+const CARRIAGE_RETURN: u8 = b'\r';
+const NEWLINE: u8 = b'\n';
 
-pub fn get_required_filenames(config: &ConfigSettings) -> Vec<String> {
+pub fn get_required_filenames(config: &ConfigSettings) -> Vec<PathBuf> {
     let mut paths = if config.supplied_paths.is_empty() {
         get_paths_from_stdin(config)
     } else {
@@ -17,7 +20,7 @@ pub fn get_required_filenames(config: &ConfigSettings) -> Vec<String> {
     // arguments produce the same path more than once.
     {
         let mut seen = std::collections::HashSet::new();
-        paths.retain(|p| seen.insert(dedup_key(Path::new(p))));
+        paths.retain(|p| seen.insert(dedup_key(p)));
     }
 
     if let Some(limit) = config.limit_num {
@@ -34,14 +37,17 @@ fn dedup_key(path: &Path) -> PathBuf {
         .collect()
 }
 
-fn get_paths_from_stdin(config: &ConfigSettings) -> Vec<String> {
+fn get_paths_from_stdin(config: &ConfigSettings) -> Vec<PathBuf> {
     let stdin = io::stdin();
     stdin
         .lock()
-        .lines()
+        .split(NEWLINE)
         .filter_map(|line_result| match line_result {
-            Ok(line) => (!line.is_empty() && is_hashable(Path::new(&line), config.debug_mode))
-                .then_some(line),
+            Ok(line) => {
+                let path = stdin_line_to_path(line);
+                (!path.as_os_str().is_empty() && is_hashable(&path, config.debug_mode))
+                    .then_some(path)
+            }
             Err(e) => {
                 // Always report stdin I/O errors so the user isn't silently left
                 // with fewer files hashed than expected.
@@ -50,6 +56,27 @@ fn get_paths_from_stdin(config: &ConfigSettings) -> Vec<String> {
             }
         })
         .collect()
+}
+
+/// Converts one stdin line (without its newline) to a path, dropping a trailing `\r`.
+pub fn stdin_line_to_path(mut line: Vec<u8>) -> PathBuf {
+    if line.last() == Some(&CARRIAGE_RETURN) {
+        line.pop();
+    }
+    bytes_to_path(line)
+}
+
+#[cfg(unix)]
+fn bytes_to_path(bytes: Vec<u8>) -> PathBuf {
+    use std::os::unix::ffi::OsStringExt;
+    PathBuf::from(std::ffi::OsString::from_vec(bytes))
+}
+
+#[cfg(not(unix))]
+fn bytes_to_path(bytes: Vec<u8>) -> PathBuf {
+    let text = String::from_utf8(bytes)
+        .unwrap_or_else(|e| String::from_utf8_lossy(e.as_bytes()).into_owned());
+    PathBuf::from(text)
 }
 
 /// Regular files and missing paths are hashed; a missing path is reported then.
@@ -67,7 +94,7 @@ fn is_hashable(path: &Path, debug_mode: bool) -> bool {
     }
 }
 
-fn get_paths_matching_glob(config: &ConfigSettings) -> Vec<String> {
+fn get_paths_matching_glob(config: &ConfigSettings) -> Vec<PathBuf> {
     let glob_settings = glob::MatchOptions {
         case_sensitive: config.case_sensitive,
         require_literal_separator: false,
@@ -84,27 +111,28 @@ fn get_paths_matching_glob(config: &ConfigSettings) -> Vec<String> {
 /// Expands one command-line argument into file paths.
 ///
 /// An existing path is taken literally, even when its name holds glob characters,
-/// and kept only if [`is_hashable`].
-fn expand_pattern(pattern: &str, options: glob::MatchOptions, debug_mode: bool) -> Vec<String> {
+/// and kept only if [`is_hashable`]. Glob matching needs UTF-8, so other arguments
+/// are taken literally.
+fn expand_pattern(pattern: &OsStr, options: glob::MatchOptions, debug_mode: bool) -> Vec<PathBuf> {
     let path = Path::new(pattern);
 
     if path.exists() {
         return if is_hashable(path, debug_mode) {
-            vec![pattern.to_owned()]
+            vec![path.to_path_buf()]
         } else {
             Vec::new()
         };
     }
 
-    if !pattern.contains(GLOB_WILDCARDS) {
-        return vec![pattern.to_owned()];
-    }
+    let Some(glob_pattern) = pattern.to_str().filter(|p| p.contains(GLOB_WILDCARDS)) else {
+        return vec![path.to_path_buf()];
+    };
 
-    match glob::glob_with(pattern, options) {
+    match glob::glob_with(glob_pattern, options) {
         Ok(entries) => {
             let matches: Vec<_> = entries
                 .filter_map(|entry| match entry {
-                    Ok(path) if path.is_file() => Some(path.to_string_lossy().into_owned()),
+                    Ok(path) if path.is_file() => Some(path),
                     Ok(_) => None,
                     Err(e) => {
                         eprintln!("Error reading '{}': {}", e.path().display(), e.error());
@@ -113,12 +141,12 @@ fn expand_pattern(pattern: &str, options: glob::MatchOptions, debug_mode: bool) 
                 })
                 .collect();
             if matches.is_empty() && debug_mode {
-                eprintln!("No matches: {pattern}");
+                eprintln!("No matches: {glob_pattern}");
             }
             matches
         }
         // Invalid glob pattern: keep it as a literal so the missing file is reported
-        Err(_) => vec![pattern.to_owned()],
+        Err(_) => vec![path.to_path_buf()],
     }
 }
 

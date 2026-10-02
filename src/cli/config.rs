@@ -1,3 +1,5 @@
+use std::ffi::OsString;
+
 use crate::core::types::{HashAlgorithm, OutputEncoding};
 
 #[allow(clippy::struct_excessive_bools)]
@@ -11,7 +13,7 @@ pub struct ConfigSettings {
     pub algorithm: HashAlgorithm,
     pub encoding: OutputEncoding,
     pub limit_num: Option<usize>,
-    pub supplied_paths: Vec<String>,
+    pub supplied_paths: Vec<OsString>,
 }
 
 pub const HELP: &str = "\

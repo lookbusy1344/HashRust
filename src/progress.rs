@@ -5,6 +5,7 @@
 //! coordinated rendering without manual thread management.
 
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
+use std::path::Path;
 use std::time::Duration;
 
 pub const PROGRESS_THRESHOLD_MILLIS: u64 = 200;
@@ -55,7 +56,7 @@ impl ProgressCoordinator {
     /// Create a spinner for a single file operation
     ///
     /// The spinner is added to the `MultiProgress` for coordinated rendering.
-    pub fn create_spinner(&self, pathstr: &str) -> ProgressBar {
+    pub fn create_spinner(&self, path: &Path) -> ProgressBar {
         let pb = self.multi.add(ProgressBar::new_spinner());
         let style = ProgressStyle::default_spinner()
             .template("{spinner:.green} Hashing {msg}...")
@@ -66,7 +67,7 @@ impl ProgressCoordinator {
             });
 
         pb.set_style(style);
-        pb.set_message(pathstr.to_string());
+        pb.set_message(path.display().to_string());
         pb.enable_steady_tick(Duration::from_millis(SPINNER_TICK_MS));
         pb
     }

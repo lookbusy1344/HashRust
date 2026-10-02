@@ -1,3 +1,5 @@
+use std::path::Path;
+
 use anyhow::Result;
 use blake2::{Blake2b512, Blake2s256};
 use md5::Md5;
@@ -14,7 +16,7 @@ use crate::hash::xxh128::Xxh128;
 pub fn call_hasher(
     algo: HashAlgorithm,
     encoding: OutputEncoding,
-    path: impl AsRef<str>,
+    path: impl AsRef<Path>,
 ) -> Result<BasicHash> {
     // CRC32/U32 validation performed at CLI layer - hasher trusts its inputs
     match algo {

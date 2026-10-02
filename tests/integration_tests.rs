@@ -601,6 +601,49 @@ fn test_error_help_goes_to_stderr_not_stdout() {
     );
 }
 
+// Linux filesystems accept arbitrary bytes in names; macOS APFS rejects invalid UTF-8.
+#[test]
+#[cfg(target_os = "linux")]
+fn test_non_utf8_filename_hashed() {
+    use std::ffi::OsStr;
+    use std::os::unix::ffi::OsStrExt;
+
+    let dir = tempfile::TempDir::new().expect("Failed to create temp dir");
+    let path = dir.path().join(OsStr::from_bytes(b"\xff.txt"));
+    std::fs::write(&path, b"test").expect("Failed to write file");
+
+    let from_args = hash_rust()
+        .args(["-n", "-x", "-a", "MD5"])
+        .arg(&path)
+        .output()
+        .expect("Failed to execute hash_rust");
+    assert!(from_args.status.success());
+    assert_eq!(
+        String::from_utf8_lossy(&from_args.stdout).trim(),
+        "098f6bcd4621d373cade4e832627b4f6"
+    );
+
+    let mut child = hash_rust()
+        .args(["-n", "-x", "-a", "MD5"])
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .spawn()
+        .expect("Failed to spawn hash_rust");
+    if let Some(mut stdin) = child.stdin.take() {
+        stdin
+            .write_all(path.as_os_str().as_bytes())
+            .expect("Failed to write to stdin");
+    }
+    let from_stdin = child
+        .wait_with_output()
+        .expect("Failed to wait on hash_rust");
+    assert!(from_stdin.status.success());
+    assert_eq!(
+        String::from_utf8_lossy(&from_stdin.stdout).trim(),
+        "098f6bcd4621d373cade4e832627b4f6"
+    );
+}
+
 // Character devices and FIFOs are not hashed: reading them can block or never end.
 #[test]
 #[cfg(unix)]

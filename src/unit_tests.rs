@@ -100,12 +100,15 @@ fn test_config_settings_new() {
     assert_eq!(config.algorithm, HashAlgorithm::SHA3_256);
     assert_eq!(config.encoding, OutputEncoding::Hex);
     assert_eq!(config.limit_num, Some(100));
-    assert_eq!(config.supplied_paths, Vec::<String>::new());
+    assert_eq!(config.supplied_paths, Vec::<std::ffi::OsString>::new());
 }
 
 #[test]
 fn test_config_settings_with_paths() {
-    let paths = vec!["file1.txt".to_string(), "file2.txt".to_string()];
+    let paths = vec![
+        std::ffi::OsString::from("file1.txt"),
+        std::ffi::OsString::from("file2.txt"),
+    ];
     let config = ConfigSettings {
         debug_mode: false,
         exclude_fn: false,
@@ -507,7 +510,7 @@ mod glob_tests {
             algorithm: HashAlgorithm::SHA3_256,
             encoding: OutputEncoding::Hex,
             limit_num: None,
-            supplied_paths: vec![pattern],
+            supplied_paths: vec![pattern.into()],
         };
 
         let paths = get_required_filenames(&config);
@@ -529,7 +532,7 @@ mod glob_tests {
             algorithm: HashAlgorithm::SHA3_256,
             encoding: OutputEncoding::Hex,
             limit_num: None,
-            supplied_paths: vec![pattern],
+            supplied_paths: vec![pattern.into()],
         };
 
         let paths = get_required_filenames(&config);
@@ -551,7 +554,7 @@ mod glob_tests {
             algorithm: HashAlgorithm::SHA3_256,
             encoding: OutputEncoding::Hex,
             limit_num: None,
-            supplied_paths: vec![pattern],
+            supplied_paths: vec![pattern.into()],
         };
 
         let paths = get_required_filenames(&config);
@@ -574,7 +577,7 @@ mod glob_tests {
             algorithm: HashAlgorithm::SHA3_256,
             encoding: OutputEncoding::Hex,
             limit_num: None,
-            supplied_paths: vec![pattern],
+            supplied_paths: vec![pattern.into()],
         };
 
         let paths = get_required_filenames(&config);
@@ -596,12 +599,12 @@ mod glob_tests {
             algorithm: HashAlgorithm::SHA3_256,
             encoding: OutputEncoding::Hex,
             limit_num: None,
-            supplied_paths: vec![literal_path.clone()],
+            supplied_paths: vec![literal_path.clone().into()],
         };
 
         let paths = get_required_filenames(&config);
         assert_eq!(paths.len(), 1);
-        assert_eq!(paths[0], literal_path);
+        assert_eq!(paths[0], std::path::Path::new(&literal_path));
     }
 
     #[test]
@@ -622,12 +625,12 @@ mod glob_tests {
             algorithm: HashAlgorithm::SHA3_256,
             encoding: OutputEncoding::Hex,
             limit_num: None,
-            supplied_paths: vec![nonexistent.clone()],
+            supplied_paths: vec![nonexistent.clone().into()],
         };
 
         // Missing literals pass through; hashing reports them per file
         let paths = get_required_filenames(&config);
-        assert_eq!(paths, vec![nonexistent]);
+        assert_eq!(paths, vec![std::path::PathBuf::from(nonexistent)]);
     }
 
     #[test]
@@ -647,11 +650,11 @@ mod glob_tests {
             algorithm: HashAlgorithm::SHA3_256,
             encoding: OutputEncoding::Hex,
             limit_num: None,
-            supplied_paths: vec![literal_path.clone()],
+            supplied_paths: vec![literal_path.clone().into()],
         };
 
         let paths = get_required_filenames(&config);
-        assert_eq!(paths, vec![literal_path]);
+        assert_eq!(paths, vec![std::path::PathBuf::from(literal_path)]);
     }
 
     #[test]
@@ -669,7 +672,7 @@ mod glob_tests {
             algorithm: HashAlgorithm::SHA3_256,
             encoding: OutputEncoding::Hex,
             limit_num: None,
-            supplied_paths: vec![dir_path],
+            supplied_paths: vec![dir_path.into()],
         };
 
         // Should return empty list or error (directory is ignored in non-debug mode)
@@ -693,7 +696,7 @@ mod glob_tests {
             algorithm: HashAlgorithm::SHA3_256,
             encoding: OutputEncoding::Hex,
             limit_num: None,
-            supplied_paths: vec![pattern1, pattern2],
+            supplied_paths: vec![pattern1.into(), pattern2.into()],
         };
 
         let paths = get_required_filenames(&config);
@@ -715,7 +718,7 @@ mod glob_tests {
             algorithm: HashAlgorithm::SHA3_256,
             encoding: OutputEncoding::Hex,
             limit_num: Some(2),
-            supplied_paths: vec![pattern],
+            supplied_paths: vec![pattern.into()],
         };
 
         let paths = get_required_filenames(&config);
@@ -739,13 +742,17 @@ mod glob_tests {
             algorithm: HashAlgorithm::SHA3_256,
             encoding: OutputEncoding::Hex,
             limit_num: None,
-            supplied_paths: vec![pattern1, pattern2],
+            supplied_paths: vec![pattern1.into(), pattern2.into()],
         };
 
         let paths = get_required_filenames(&config);
         let mut unique = std::collections::HashSet::new();
         for path in &paths {
-            assert!(unique.insert(path.clone()), "duplicate path: {path}");
+            assert!(
+                unique.insert(path.clone()),
+                "duplicate path: {}",
+                path.display()
+            );
         }
     }
 
@@ -764,7 +771,7 @@ mod glob_tests {
             algorithm: HashAlgorithm::SHA3_256,
             encoding: OutputEncoding::Hex,
             limit_num: None,
-            supplied_paths: vec![literal.clone(), literal],
+            supplied_paths: vec![literal.clone().into(), literal.into()],
         };
 
         let paths = get_required_filenames(&config);
@@ -783,14 +790,17 @@ mod glob_tests {
             encoding: OutputEncoding::Hex,
             limit_num: None,
             supplied_paths: vec![
-                "./hash_rust_missing.txt".to_string(),
-                "hash_rust_missing.txt".to_string(),
+                "./hash_rust_missing.txt".into(),
+                "hash_rust_missing.txt".into(),
             ],
         };
 
         let paths = get_required_filenames(&config);
         // First spelling wins and is kept as given
-        assert_eq!(paths, vec!["./hash_rust_missing.txt".to_string()]);
+        assert_eq!(
+            paths,
+            vec![std::path::PathBuf::from("./hash_rust_missing.txt")]
+        );
     }
 
     #[test]
@@ -809,7 +819,7 @@ mod glob_tests {
             algorithm: HashAlgorithm::SHA3_256,
             encoding: OutputEncoding::Hex,
             limit_num: None,
-            supplied_paths: vec![pattern],
+            supplied_paths: vec![pattern.into()],
         };
 
         let paths = get_required_filenames(&config);
@@ -867,5 +877,50 @@ mod separator_tests {
         let (opts, files) = split_at_separator(os(&["--", "--"]));
         assert_eq!(opts, os(&[]));
         assert_eq!(files, os(&["--"]));
+    }
+}
+
+#[cfg(unix)]
+mod non_utf8_path_tests {
+    use super::*;
+    use crate::io::files::{get_required_filenames, stdin_line_to_path};
+    use std::ffi::OsStr;
+    use std::os::unix::ffi::OsStrExt;
+    use std::path::PathBuf;
+
+    const NON_UTF8_NAME: &[u8] = b"/nonexistent/\xff.txt";
+
+    #[test]
+    fn test_non_utf8_argument_preserved() {
+        let raw = OsStr::from_bytes(NON_UTF8_NAME);
+        let config = ConfigSettings {
+            debug_mode: false,
+            exclude_fn: false,
+            single_thread: false,
+            case_sensitive: true,
+            no_progress: false,
+            algorithm: HashAlgorithm::SHA3_256,
+            encoding: OutputEncoding::Hex,
+            limit_num: None,
+            supplied_paths: vec![raw.to_os_string()],
+        };
+
+        assert_eq!(get_required_filenames(&config), vec![PathBuf::from(raw)]);
+    }
+
+    #[test]
+    fn test_stdin_line_preserves_non_utf8_bytes() {
+        assert_eq!(
+            stdin_line_to_path(NON_UTF8_NAME.to_vec()),
+            PathBuf::from(OsStr::from_bytes(NON_UTF8_NAME))
+        );
+    }
+
+    #[test]
+    fn test_stdin_line_strips_carriage_return() {
+        assert_eq!(
+            stdin_line_to_path(b"a.txt\r".to_vec()),
+            PathBuf::from("a.txt")
+        );
     }
 }

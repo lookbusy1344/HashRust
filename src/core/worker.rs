@@ -1,5 +1,6 @@
 use std::fmt::Display;
 use std::io::{self, BufWriter, Write};
+use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 
 use anyhow::Result;
@@ -84,10 +85,7 @@ fn show_initial_info(config: &ConfigSettings) {
     }
 }
 
-fn file_hashes_st<S>(config: &ConfigSettings, paths: &[S]) -> bool
-where
-    S: AsRef<str> + Display + Sync,
-{
+fn file_hashes_st(config: &ConfigSettings, paths: &[PathBuf]) -> bool {
     if config.debug_mode {
         eprintln!("Single-threaded mode");
         eprintln!("Algorithm: {:?}", config.algorithm);
@@ -103,19 +101,15 @@ where
     let mut out = BufWriter::new(stdout.lock());
 
     // Lazy iterator: each file is hashed only when its line is about to be written
-    let results = paths.iter().map(|pathstr| {
-        let file_hash =
-            hash_with_progress(config, AsRef::<str>::as_ref(pathstr), coordinator.as_ref());
-        (pathstr, file_hash)
+    let results = paths.iter().map(|path| {
+        let file_hash = hash_with_progress(config, path, coordinator.as_ref());
+        (path.display(), file_hash)
     });
 
     write_results(&mut out, results, config.exclude_fn)
 }
 
-fn file_hashes_mt<S>(config: &ConfigSettings, paths: &[S]) -> bool
-where
-    S: AsRef<str> + Sync + Display,
-{
+fn file_hashes_mt(config: &ConfigSettings, paths: &[PathBuf]) -> bool {
     if config.debug_mode {
         eprintln!("Multi-threaded mode");
         eprintln!("Algorithm: {:?}", config.algorithm);
@@ -133,10 +127,10 @@ where
 
     let results: Vec<_> = paths
         .par_iter()
-        .map(|pathstr| {
+        .map(|path| {
             let file_hash = hash_with_progress(
                 config,
-                AsRef::<str>::as_ref(pathstr),
+                path,
                 if overall_progress.is_some() {
                     None
                 } else {
@@ -148,7 +142,7 @@ where
                 pb.inc(1);
             }
 
-            (pathstr, file_hash)
+            (path.display(), file_hash)
         })
         .collect();
 
@@ -205,15 +199,15 @@ fn write_results<P: Display>(
 
 fn hash_with_progress(
     config: &ConfigSettings,
-    pathstr: &str,
+    path: &Path,
     coordinator: Option<&ProgressCoordinator>,
 ) -> Result<BasicHash> {
     // Create spinner if progress is enabled
     // With MultiProgress, fast operations will just flash briefly which is acceptable
-    let spinner = coordinator.map(|coord| coord.create_spinner(pathstr));
+    let spinner = coordinator.map(|coord| coord.create_spinner(path));
 
     let start_time = Instant::now();
-    let result = call_hasher(config.algorithm, config.encoding, pathstr);
+    let result = call_hasher(config.algorithm, config.encoding, path);
     let elapsed = start_time.elapsed();
 
     // Clean up spinner
@@ -226,7 +220,7 @@ fn hash_with_progress(
     {
         eprintln!(
             "File '{}' took {:.2}s to hash",
-            pathstr,
+            path.display(),
             elapsed.as_secs_f64()
         );
     }

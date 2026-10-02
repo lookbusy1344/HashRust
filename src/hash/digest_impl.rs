@@ -1,5 +1,6 @@
 use std::fs::File;
 use std::io::Read;
+use std::path::Path;
 
 use byteorder::{BigEndian, ByteOrder};
 use data_encoding::{BASE32, BASE32HEX, BASE64};
@@ -9,8 +10,8 @@ use crate::core::types::{BasicHash, OutputEncoding};
 
 const BUFFER_SIZE: usize = 4096 * 8;
 
-fn hash_file<D: Digest>(filename: impl AsRef<str>) -> anyhow::Result<Output<D>> {
-    let mut file = File::open(filename.as_ref())?;
+fn hash_file<D: Digest>(filename: impl AsRef<Path>) -> anyhow::Result<Output<D>> {
+    let mut file = File::open(filename)?;
     // usize::try_from can only fail on 32-bit targets where usize < u64;
     // on those targets a file too large to fit in usize falls through to the
     // chunked path, which is the correct behaviour.
@@ -40,7 +41,7 @@ fn hash_file<D: Digest>(filename: impl AsRef<str>) -> anyhow::Result<Output<D>> 
 
 #[inline]
 pub fn hash_file_encoded<D: Digest>(
-    filename: impl AsRef<str>,
+    filename: impl AsRef<Path>,
     encoding: OutputEncoding,
 ) -> anyhow::Result<BasicHash> {
     let h = hash_file::<D>(filename)?;
