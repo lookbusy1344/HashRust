@@ -1,5 +1,5 @@
 use std::fmt::Display;
-use std::io::{self, BufWriter, Write};
+use std::io::{self, BufWriter, IsTerminal, Write};
 use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 
@@ -10,7 +10,7 @@ use crate::cli::config::ConfigSettings;
 use crate::core::types::BasicHash;
 use crate::hash::algorithms::call_hasher;
 use crate::io::files::get_required_filenames;
-use crate::progress::ProgressCoordinator;
+use crate::progress::{ProgressCoordinator, Terminals, progress_mode};
 
 /// Returned by `worker_func` when one or more files failed to hash.
 ///
@@ -91,12 +91,7 @@ fn file_hashes_st(config: &ConfigSettings, paths: &[PathBuf]) -> bool {
         eprintln!("Algorithm: {:?}", config.algorithm);
     }
 
-    let coordinator = if config.no_progress {
-        None
-    } else {
-        Some(ProgressCoordinator::new())
-    };
-
+    let coordinator = create_coordinator(config, true, paths.len());
     let stdout = io::stdout();
     let mut out = BufWriter::new(stdout.lock());
 
@@ -106,7 +101,11 @@ fn file_hashes_st(config: &ConfigSettings, paths: &[PathBuf]) -> bool {
         (path.display(), file_hash)
     });
 
-    write_results(&mut out, results, config.exclude_fn)
+    let had_error = write_results(&mut out, results, config.exclude_fn);
+    if let Some(c) = &coordinator {
+        c.finish();
+    }
+    had_error
 }
 
 fn file_hashes_mt(config: &ConfigSettings, paths: &[PathBuf]) -> bool {
@@ -115,45 +114,37 @@ fn file_hashes_mt(config: &ConfigSettings, paths: &[PathBuf]) -> bool {
         eprintln!("Algorithm: {:?}", config.algorithm);
     }
 
-    let coordinator = if config.no_progress {
-        None
-    } else {
-        Some(ProgressCoordinator::new())
-    };
-
-    let overall_progress = coordinator
-        .as_ref()
-        .and_then(|c| c.create_overall_progress(paths.len()));
+    let coordinator = create_coordinator(config, false, paths.len());
 
     let results: Vec<_> = paths
         .par_iter()
         .map(|path| {
-            let file_hash = hash_with_progress(
-                config,
-                path,
-                if overall_progress.is_some() {
-                    None
-                } else {
-                    coordinator.as_ref()
-                },
-            );
-
-            if let Some(ref pb) = overall_progress {
-                pb.inc(1);
-            }
-
+            let file_hash = hash_with_progress(config, path, coordinator.as_ref());
             (path.display(), file_hash)
         })
         .collect();
 
-    if let Some(pb) = overall_progress {
-        pb.finish_with_message("Complete!");
+    if let Some(c) = &coordinator {
+        c.finish();
     }
 
     let stdout = io::stdout();
     let mut out = BufWriter::new(stdout.lock());
 
     write_results(&mut out, results, config.exclude_fn)
+}
+
+fn create_coordinator(
+    config: &ConfigSettings,
+    streaming_output: bool,
+    file_count: usize,
+) -> Option<ProgressCoordinator> {
+    let terminals = Terminals {
+        stdout: io::stdout().is_terminal(),
+        stderr: io::stderr().is_terminal(),
+    };
+    let mode = progress_mode(config.no_progress, streaming_output, terminals, file_count);
+    ProgressCoordinator::new(mode, file_count)
 }
 
 /// Writes one line per successful hash and reports failures on stderr.
@@ -202,17 +193,14 @@ fn hash_with_progress(
     path: &Path,
     coordinator: Option<&ProgressCoordinator>,
 ) -> Result<BasicHash> {
-    // Create spinner if progress is enabled
-    // With MultiProgress, fast operations will just flash briefly which is acceptable
-    let spinner = coordinator.map(|coord| coord.create_spinner(path));
+    let spinner = coordinator.and_then(|coord| coord.start_file(path));
 
     let start_time = Instant::now();
     let result = call_hasher(config.algorithm, config.encoding, path);
     let elapsed = start_time.elapsed();
 
-    // Clean up spinner
-    if let Some(pb) = spinner {
-        pb.finish_and_clear();
+    if let Some(coord) = coordinator {
+        coord.finish_file(spinner);
     }
 
     if config.debug_mode
