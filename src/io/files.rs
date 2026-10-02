@@ -8,6 +8,14 @@ const GLOB_WILDCARDS: [char; 4] = ['*', '?', '[', ']'];
 const CARRIAGE_RETURN: u8 = b'\r';
 const NEWLINE: u8 = b'\n';
 
+/// Fails when no paths were given and stdin is a terminal, which would wait for typed input.
+pub fn check_path_source(config: &ConfigSettings, stdin_is_terminal: bool) -> anyhow::Result<()> {
+    if config.supplied_paths.is_empty() && stdin_is_terminal {
+        anyhow::bail!("No files specified. Pass file paths or globs, or pipe paths on stdin");
+    }
+    Ok(())
+}
+
 pub fn get_required_filenames(config: &ConfigSettings) -> Vec<PathBuf> {
     let mut paths = if config.supplied_paths.is_empty() {
         get_paths_from_stdin(config)
@@ -153,6 +161,21 @@ fn expand_pattern(pattern: &OsStr, options: glob::MatchOptions, debug_mode: bool
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::core::types::{HashAlgorithm, OutputEncoding};
+
+    fn config_with_paths(supplied_paths: Vec<std::ffi::OsString>) -> ConfigSettings {
+        ConfigSettings {
+            debug_mode: false,
+            exclude_fn: false,
+            single_thread: false,
+            case_sensitive: false,
+            no_progress: false,
+            algorithm: HashAlgorithm::SHA3_256,
+            encoding: OutputEncoding::Hex,
+            limit_num: None,
+            supplied_paths,
+        }
+    }
 
     #[test]
     #[cfg(unix)]
@@ -190,5 +213,21 @@ mod tests {
     fn test_missing_path_is_hashable_so_it_is_reported() {
         let dir = tempfile::TempDir::new().unwrap();
         assert!(is_hashable(&dir.path().join("missing.txt"), false));
+    }
+
+    #[test]
+    fn test_no_paths_with_terminal_stdin_is_error() {
+        let err = check_path_source(&config_with_paths(Vec::new()), true).unwrap_err();
+        assert!(err.to_string().contains("No files"), "got: {err}");
+    }
+
+    #[test]
+    fn test_no_paths_with_piped_stdin_is_ok() {
+        assert!(check_path_source(&config_with_paths(Vec::new()), false).is_ok());
+    }
+
+    #[test]
+    fn test_paths_with_terminal_stdin_is_ok() {
+        assert!(check_path_source(&config_with_paths(vec!["a.txt".into()]), true).is_ok());
     }
 }

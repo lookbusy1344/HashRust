@@ -9,7 +9,7 @@ use rayon::prelude::*;
 use crate::cli::config::ConfigSettings;
 use crate::core::types::BasicHash;
 use crate::hash::algorithms::call_hasher;
-use crate::io::files::get_required_filenames;
+use crate::io::files::{check_path_source, get_required_filenames};
 use crate::progress::{ProgressCoordinator, Terminals, progress_mode};
 
 /// Returned by `worker_func` when one or more files failed to hash.
@@ -45,6 +45,7 @@ pub fn worker_func(config: &ConfigSettings) -> Result<()> {
         show_initial_info(config);
     }
 
+    check_path_source(config, io::stdin().is_terminal())?;
     let paths = get_required_filenames(config);
 
     if paths.is_empty() {
