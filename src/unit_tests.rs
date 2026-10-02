@@ -850,6 +850,21 @@ fn test_hash_algorithm_from_str_new_algorithms() {
     );
 }
 
+#[test]
+fn test_hash_algorithm_sha2_aliases_match_sha256() {
+    let cases = [
+        ("SHA-224", HashAlgorithm::SHA2_224),
+        ("SHA_224", HashAlgorithm::SHA2_224),
+        ("SHA-384", HashAlgorithm::SHA2_384),
+        ("SHA_384", HashAlgorithm::SHA2_384),
+        ("sha-512", HashAlgorithm::SHA2_512),
+        ("SHA_512", HashAlgorithm::SHA2_512),
+    ];
+    for (name, expected) in cases {
+        assert_eq!(HashAlgorithm::from_str(name).ok(), Some(expected), "{name}");
+    }
+}
+
 mod separator_tests {
     use crate::cli::args::split_at_separator;
     use std::ffi::OsString;
