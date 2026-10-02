@@ -16,7 +16,7 @@ pub struct ConfigSettings {
 
 pub const HELP: &str = "\
 USAGE:
-    hash_rust [flags] [options] file glob
+    hash_rust [flags] [options] [--] file glob
 FLAGS:
     -h, --help                   Prints help information
     -d, --debug                  Debug messages

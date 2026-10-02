@@ -166,6 +166,27 @@ fn test_missing_file_argument_does_not_stop_other_files() {
 }
 
 #[test]
+fn test_double_dash_allows_dash_prefixed_filename() {
+    let dir = tempfile::TempDir::new().expect("Failed to create temp dir");
+    std::fs::write(dir.path().join("-x"), b"test").expect("Failed to write file");
+
+    let output = hash_rust()
+        .current_dir(dir.path())
+        .args(["-n", "-a", "MD5", "--", "-x"])
+        .output()
+        .expect("Failed to execute hash_rust");
+
+    assert!(
+        output.status.success(),
+        "stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    // MD5 of "test", with the filename kept (-x after -- is not the exclude flag)
+    assert_eq!(stdout.trim(), "098f6bcd4621d373cade4e832627b4f6 -x");
+}
+
+#[test]
 fn test_invalid_algorithm_error() {
     let test_content = "test";
     let test_file = create_temp_file(test_content);

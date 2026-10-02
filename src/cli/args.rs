@@ -8,7 +8,13 @@ use pico_args::Arguments;
 use crate::cli::config::{ConfigSettings, HELP};
 use crate::core::types::{DEFAULT_HASH, GIT_VERSION_SHORT, HashAlgorithm, OutputEncoding, VERSION};
 
-pub fn process_command_line(mut pargs: Arguments) -> Result<ConfigSettings> {
+const SEPARATOR: &str = "--";
+
+/// Builds the configuration from parsed options and the paths that follow `--`.
+pub fn process_command_line(
+    mut pargs: Arguments,
+    trailing_paths: Vec<OsString>,
+) -> Result<ConfigSettings> {
     let algo_str: Option<String> = pargs.opt_value_from_str(["-a", "--algorithm"])?;
     let algo = parse_hash_algorithm(algo_str.as_deref()).map_err(|_| {
         anyhow!(
@@ -47,6 +53,7 @@ pub fn process_command_line(mut pargs: Arguments) -> Result<ConfigSettings> {
 
     let supplied_paths = remaining_args
         .into_iter()
+        .chain(trailing_paths)
         .map(|arg| arg.to_string_lossy().to_string())
         .collect();
 
@@ -92,6 +99,18 @@ pub fn show_help(longform: bool, out: &mut dyn Write) {
         let _ = writeln!(out, "{HELP}");
     }
     let _ = writeln!(out, "Default algorithm is {DEFAULT_HASH:?}");
+}
+
+/// Splits arguments at the first `--`; everything after it is a file path.
+pub fn split_at_separator(mut args: Vec<OsString>) -> (Vec<OsString>, Vec<OsString>) {
+    match args.iter().position(|arg| arg == SEPARATOR) {
+        Some(index) => {
+            let files = args.split_off(index + 1);
+            args.pop();
+            (args, files)
+        }
+        None => (args, Vec::new()),
+    }
 }
 
 fn args_finished(args: Arguments) -> Result<Vec<OsString>> {

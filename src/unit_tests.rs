@@ -839,3 +839,33 @@ fn test_hash_algorithm_from_str_new_algorithms() {
         HashAlgorithm::XXH128
     );
 }
+
+mod separator_tests {
+    use crate::cli::args::split_at_separator;
+    use std::ffi::OsString;
+
+    fn os(args: &[&str]) -> Vec<OsString> {
+        args.iter().map(OsString::from).collect()
+    }
+
+    #[test]
+    fn test_split_without_separator() {
+        let (opts, files) = split_at_separator(os(&["-a", "md5", "f.txt"]));
+        assert_eq!(opts, os(&["-a", "md5", "f.txt"]));
+        assert_eq!(files, os(&[]));
+    }
+
+    #[test]
+    fn test_split_at_separator() {
+        let (opts, files) = split_at_separator(os(&["-n", "--", "-x", "f.txt"]));
+        assert_eq!(opts, os(&["-n"]));
+        assert_eq!(files, os(&["-x", "f.txt"]));
+    }
+
+    #[test]
+    fn test_split_only_at_first_separator() {
+        let (opts, files) = split_at_separator(os(&["--", "--"]));
+        assert_eq!(opts, os(&[]));
+        assert_eq!(files, os(&["--"]));
+    }
+}

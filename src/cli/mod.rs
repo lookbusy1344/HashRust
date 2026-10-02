@@ -1,4 +1,4 @@
 pub mod args;
 pub mod config;
 
-pub use args::{process_command_line, show_help};
+pub use args::{process_command_line, show_help, split_at_separator};
