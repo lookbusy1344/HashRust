@@ -1,5 +1,5 @@
+use digest::consts::U16;
 use digest::{FixedOutput, HashMarker, Output, OutputSizeUser, Reset, Update};
-use generic_array::typenum::U16;
 use twox_hash::XxHash3_128;
 
 /// XXH128 (XXH3, 128-bit, seed 0). Output is the canonical big-endian byte order.

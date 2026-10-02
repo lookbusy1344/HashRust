@@ -2,7 +2,6 @@ use std::fs::File;
 use std::io::Read;
 use std::path::Path;
 
-use byteorder::{BigEndian, ByteOrder};
 use data_encoding::{BASE32, BASE32HEX, BASE64};
 use digest::{Digest, Output};
 
@@ -52,14 +51,11 @@ pub fn hash_file_encoded<D: Digest>(
         OutputEncoding::Base32 => BASE32.encode(&h),
         OutputEncoding::Base32Hex => BASE32HEX.encode(&h),
         OutputEncoding::U32 => {
-            if h.len() != 4 {
-                return Err(anyhow::anyhow!(
-                    "When U32 is requested, hash size must be 4 bytes"
-                ));
-            }
-
-            let number = BigEndian::read_u32(&h);
-            format!("{number:010}")
+            let bytes: [u8; 4] = h
+                .as_slice()
+                .try_into()
+                .map_err(|_| anyhow::anyhow!("When U32 is requested, hash size must be 4 bytes"))?;
+            format!("{:010}", u32::from_be_bytes(bytes))
         }
     }))
 }

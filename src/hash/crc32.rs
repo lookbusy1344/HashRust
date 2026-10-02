@@ -1,7 +1,7 @@
 use crc32fast::Hasher;
 pub use digest::Digest;
+use digest::consts::U4;
 use digest::{FixedOutput, HashMarker, Output, OutputSizeUser, Reset, Update};
-use generic_array::typenum::U4;
 
 #[derive(Clone, Default)]
 pub struct Crc32(Hasher);
