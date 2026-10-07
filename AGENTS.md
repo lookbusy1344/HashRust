@@ -11,7 +11,7 @@ Before the first VCS command, run `jj --ignore-working-copy root`. This may be a
 jj has no commit hooks. Run the pre-commit checks before `jj commit`, `jj describe` (when finalising a change) and `jj squash`.
 If a change touches only non-code files (`*.md`), skip the cargo steps.
 
-Before `jj git push` or moving a shared bookmark, run `scripts/pre-push.sh`. By default it formats the tip (newest non-empty mutable revision) with `jj fix`, then runs fmt check, build, clippy and nextest on it. `--full` formats every mutable revision in `::@` and checks each in its own checkout via `jj run`. `scripts/agent-pre-push-hook.sh` runs the tip check on every push command and blocks the push on failure. Claude Code (`.claude/settings.json`) and Codex (`.codex/hooks.json`) call it as a `PreToolUse` hook. The hook checks the tip of `@`, not the bookmark being pushed, so push only the bookmark you are working on: the one on `@-`, with an empty `@` above it.
+Before `jj git push` or moving a shared bookmark, run `scripts/pre-push.sh`. By default it formats the tip (newest non-empty mutable revision) with `jj fix`, then runs fmt check, build, clippy and nextest on it. `--full` formats every mutable revision in `::@` and checks each in its own checkout via `jj run`. In a plain git checkout it checks HEAD (`--full`: each commit in `@{upstream}..HEAD`) and does not reformat. `scripts/agent-pre-push-hook.sh` runs the tip check on every push command and blocks the push on failure. Claude Code (`.claude/settings.json`) and Codex (`.codex/hooks.json`) call it as a `PreToolUse` hook. The hook checks the tip of `@`, not the bookmark being pushed, so push only the bookmark you are working on: the one on `@-`, with an empty `@` above it.
 
 Push only on explicit request. "Push this" means: if `@` is non-empty, `jj commit` it (after the pre-commit checks). Move the bookmark to `@-` with `jj bookmark set <name> -r @-`, then `jj git push --bookmark <name>`. Use the bookmark already on the stack; otherwise `main`. Never push any other bookmark. Do not use `jj git push -c`.
 
@@ -77,15 +77,6 @@ HashRust is a CLI file hashing utility written in Rust that supports multiple ha
 
 ## Development Workflow
 
-Before every commit, run these in order — **all must pass cleanly**:
-
-```
-cargo build
-cargo clippy --all-targets --all-features
-cargo fmt
-gtimeout 60 cargo nextest run
-```
-
-(test fallback: `gtimeout 60 cargo test`)
+**Before every commit, `scripts/pre-commit.sh` must pass** (the `pre-commit` skill). It runs fmt check, build, clippy and nextest, and skips them when no `.rs`, `Cargo.toml` or `Cargo.lock` file changed.
 
 Also run `cargo audit` at least once per working session.
