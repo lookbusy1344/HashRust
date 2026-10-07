@@ -1,21 +1,18 @@
 ---
 name: pre-commit
-description: Run before committing changes - formats code, runs pedantic clippy, and runs tests
+description: Run before committing changes (git commit, jj commit, jj describe when finalising, jj squash) - checks formatting, runs pedantic clippy, builds and runs tests
 ---
 
-# Pre-commit Checks
+# Pre-commit checks
 
-Before every commit, run these in order — **all must pass cleanly**:
+Run from the repo root:
 
-```
-cargo build
-cargo clippy --all-targets --all-features
-cargo fmt
-gtimeout 60 cargo nextest run
+```bash
+scripts/pre-commit.sh
 ```
 
-(test fallback: `gtimeout 60 cargo test`)
+It works in jj and plain git repos. It inspects the changes in `@` (jj) or against `HEAD` (git), skips the checks when no `.rs`, `Cargo.toml` or `Cargo.lock` file changed, and otherwise runs `scripts/checks.sh`: `cargo fmt --check`, `cargo build --all-targets`, `cargo clippy --all-targets --all-features` and `cargo nextest run` under a timeout. Lint levels live in `Cargo.toml` `[lints]`.
 
-All must pass cleanly before committing.
+On a `cargo fmt --check` failure, run `cargo fmt` and rerun the script. All checks must pass with zero warnings or errors before committing.
 
-**Security:** Run `cargo audit` at least once per working session.
+**Security:** run `cargo audit` at least once per working session.

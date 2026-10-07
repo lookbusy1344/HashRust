@@ -11,13 +11,13 @@ set -euo pipefail
 
 readonly BLOCK_EXIT_CODE=2
 readonly LOG_TAIL_LINES=60
-readonly PUSH_PATTERN='\b(jj\s+git\s+push|jj\s+pmain|git\s+push)\b'
+readonly PUSH_PATTERN='(^|[^[:alnum:]_-])(jj[[:space:]]+git[[:space:]]+push|jj[[:space:]]+pmain|git[[:space:]]+push)([^[:alnum:]_-]|$)'
 
 PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 readonly PROJECT_DIR
 
 command="$(jq -r '.tool_input.command // empty')"
-rg -q "${PUSH_PATTERN}" <<< "${command}" || exit 0
+grep -Eq "${PUSH_PATTERN}" <<< "${command}" || exit 0
 
 log="$(mktemp)"
 trap 'rm -f "${log}"' EXIT
@@ -28,9 +28,9 @@ if ! "${PROJECT_DIR}/scripts/pre-push.sh" > "${log}" 2>&1; then
     exit "${BLOCK_EXIT_CODE}"
 fi
 
-# rg exits 1 on no match; the no-op path runs no tests.
-checked="$({ rg '^==> (Checking|No non-empty|jj not installed)' "${log}" || true; } | sed 's/^==> //' | paste -sd ';' -)"
-tests="$({ rg -o '[0-9]+ tests run: .*' "${log}" || true; } | tail -n 1)"
+# grep exits 1 on no match; the no-op path runs no tests.
+checked="$({ grep -E '^==> (Checking|Nothing to check)' "${log}" || true; } | sed 's/^==> //' | paste -sd ';' -)"
+tests="$({ grep -Eo '[0-9]+ tests run: .*' "${log}" || true; } | tail -n 1)"
 message="Pre-push checks passed: ${checked}${tests:+ (${tests})}"
 
 jq -n --arg message "${message}" '{

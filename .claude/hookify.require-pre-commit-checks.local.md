@@ -2,27 +2,12 @@
 name: require-pre-commit-checks
 enabled: true
 event: bash
-pattern: git\s+commit
+pattern: git\s+commit|jj\s+(commit|describe|squash)
 action: warn
 ---
 
 **Pre-commit check required.**
 
-Before proceeding, run `git diff --cached --name-only` to inspect staged files.
+Run `scripts/pre-commit.sh` before committing. It works in jj and plain git repos, skips the checks when no `.rs`, `Cargo.toml` or `Cargo.lock` file changed, and otherwise runs fmt check, build, clippy and nextest.
 
-**If all staged files are documentation only** (`.md` files, `docs/`, `README`):
-- No build or test checks required. Proceed with the commit.
-
-**If any Rust source files are staged** (`.rs`, `Cargo.toml`, `Cargo.lock`):
-- You must run ALL of the following in order before committing:
-
-```bash
-cargo build
-cargo clippy --all-targets --all-features
-cargo fmt
-gtimeout 60 cargo nextest run
-```
-
-All steps must pass with zero warnings or errors.
-
-If you have already completed all checks in this session and they passed, you may proceed.
+It must pass with zero warnings or errors. If it already passed in this session and nothing changed since, proceed.
