@@ -28,29 +28,20 @@ pub enum ProgressMode {
     Overall,
 }
 
-/// Which standard streams are terminals.
-#[derive(Debug, Clone, Copy)]
-pub struct Terminals {
-    pub stdout: bool,
-    pub stderr: bool,
-}
-
 /// Chooses the progress display for a run.
 ///
 /// Progress is drawn on stderr, so it needs a terminal there. Large sets use one
-/// overall bar, because each spinner runs its own tick thread. When hash lines
-/// stream to the same terminal, a bar would interleave with them, so spinners are
-/// used: each one finishes before its line is written.
+/// overall bar, because each spinner runs its own tick thread. Output on the same
+/// terminal is written through [`suspended`], so it does not land inside the bar.
 #[must_use]
 pub fn progress_mode(
     no_progress: bool,
-    streaming_output: bool,
-    terminals: Terminals,
+    stderr_is_terminal: bool,
     file_count: usize,
 ) -> ProgressMode {
-    if no_progress || !terminals.stderr {
+    if no_progress || !stderr_is_terminal {
         ProgressMode::Off
-    } else if file_count < OVERALL_BAR_FILE_THRESHOLD || (streaming_output && terminals.stdout) {
+    } else if file_count < OVERALL_BAR_FILE_THRESHOLD {
         ProgressMode::Spinners
     } else {
         ProgressMode::Overall
@@ -92,11 +83,24 @@ impl ProgressCoordinator {
         }
     }
 
+    /// Runs `f` with all progress output cleared, then redraws it.
+    pub fn suspend<R>(&self, f: impl FnOnce() -> R) -> R {
+        self.multi.suspend(f)
+    }
+
     /// Marks the overall bar complete.
     pub fn finish(&self) {
         if let Some(pb) = &self.overall {
             pb.finish_with_message("Complete!");
         }
+    }
+}
+
+/// Runs `f` with progress cleared when there is any, so its output does not land inside a bar.
+pub fn suspended<R>(coordinator: Option<&ProgressCoordinator>, f: impl FnOnce() -> R) -> R {
+    match coordinator {
+        Some(c) => c.suspend(f),
+        None => f(),
     }
 }
 
@@ -131,73 +135,29 @@ fn spinner(path: &Path) -> ProgressBar {
 mod tests {
     use super::*;
 
-    const BOTH: Terminals = Terminals {
-        stdout: true,
-        stderr: true,
-    };
-    const STDERR_ONLY: Terminals = Terminals {
-        stdout: false,
-        stderr: true,
-    };
-    const NEITHER: Terminals = Terminals {
-        stdout: false,
-        stderr: false,
-    };
     const LARGE: usize = OVERALL_BAR_FILE_THRESHOLD;
     const SMALL: usize = OVERALL_BAR_FILE_THRESHOLD - 1;
 
     #[test]
     fn test_progress_off_when_requested() {
-        assert_eq!(progress_mode(true, false, BOTH, SMALL), ProgressMode::Off);
+        assert_eq!(progress_mode(true, true, SMALL), ProgressMode::Off);
+        assert_eq!(progress_mode(true, true, LARGE), ProgressMode::Off);
     }
 
     #[test]
     fn test_progress_off_when_stderr_not_terminal() {
-        assert_eq!(
-            progress_mode(false, false, NEITHER, SMALL),
-            ProgressMode::Off
-        );
-        assert_eq!(
-            progress_mode(false, false, NEITHER, LARGE),
-            ProgressMode::Off
-        );
+        assert_eq!(progress_mode(false, false, SMALL), ProgressMode::Off);
+        assert_eq!(progress_mode(false, false, LARGE), ProgressMode::Off);
     }
 
     #[test]
     fn test_progress_spinners_for_small_sets() {
-        assert_eq!(
-            progress_mode(false, false, BOTH, SMALL),
-            ProgressMode::Spinners
-        );
-        assert_eq!(
-            progress_mode(false, true, BOTH, SMALL),
-            ProgressMode::Spinners
-        );
+        assert_eq!(progress_mode(false, true, SMALL), ProgressMode::Spinners);
     }
 
+    // Each spinner runs its own tick thread, so large sets always use one bar.
     #[test]
-    fn test_progress_overall_bar_for_large_collected_sets() {
-        assert_eq!(
-            progress_mode(false, false, BOTH, LARGE),
-            ProgressMode::Overall
-        );
-    }
-
-    #[test]
-    fn test_progress_overall_bar_when_streaming_to_redirected_stdout() {
-        assert_eq!(
-            progress_mode(false, true, STDERR_ONLY, LARGE),
-            ProgressMode::Overall
-        );
-    }
-
-    // Streamed lines sit in a buffered writer, so they do not show progress.
-    // Spinners finish before each line is written, so they never interleave.
-    #[test]
-    fn test_progress_spinners_when_streaming_large_set_to_terminal() {
-        assert_eq!(
-            progress_mode(false, true, BOTH, LARGE),
-            ProgressMode::Spinners
-        );
+    fn test_progress_overall_bar_for_large_sets() {
+        assert_eq!(progress_mode(false, true, LARGE), ProgressMode::Overall);
     }
 }

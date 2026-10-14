@@ -10,7 +10,7 @@ use crate::cli::config::ConfigSettings;
 use crate::core::types::BasicHash;
 use crate::hash::algorithms::call_hasher;
 use crate::io::files::{InputPaths, check_path_source, get_required_filenames};
-use crate::progress::{ProgressCoordinator, Terminals, progress_mode};
+use crate::progress::{ProgressCoordinator, progress_mode, suspended};
 
 /// Returned by `worker_func` when one or more files could not be hashed.
 ///
@@ -118,9 +118,8 @@ fn file_hashes_st(config: &ConfigSettings, paths: &[PathBuf]) -> bool {
         eprintln!("Algorithm: {:?}", config.algorithm);
     }
 
-    let coordinator = create_coordinator(config, true, paths.len());
-    let stdout = io::stdout();
-    let mut out = BufWriter::new(stdout.lock());
+    let coordinator = create_coordinator(config, paths.len());
+    let mut out = BufWriter::new(io::stdout().lock());
 
     // Lazy iterator: each file is hashed only when its line is about to be written
     let results = paths.iter().map(|path| {
@@ -133,6 +132,7 @@ fn file_hashes_st(config: &ConfigSettings, paths: &[PathBuf]) -> bool {
         results,
         config.exclude_fn,
         LineFlush::for_stdout(),
+        coordinator.as_ref(),
     );
     if let Some(c) = &coordinator {
         c.finish();
@@ -146,7 +146,7 @@ fn file_hashes_mt(config: &ConfigSettings, paths: &[PathBuf]) -> bool {
         eprintln!("Algorithm: {:?}", config.algorithm);
     }
 
-    let coordinator = create_coordinator(config, false, paths.len());
+    let coordinator = create_coordinator(config, paths.len());
 
     let results: Vec<_> = paths
         .par_iter()
@@ -163,53 +163,58 @@ fn file_hashes_mt(config: &ConfigSettings, paths: &[PathBuf]) -> bool {
     let stdout = io::stdout();
     let mut out = BufWriter::new(stdout.lock());
 
-    write_results(&mut out, results, config.exclude_fn, LineFlush::Buffered)
+    write_results(
+        &mut out,
+        results,
+        config.exclude_fn,
+        LineFlush::Buffered,
+        coordinator.as_ref(),
+    )
 }
 
-fn create_coordinator(
-    config: &ConfigSettings,
-    streaming_output: bool,
-    file_count: usize,
-) -> Option<ProgressCoordinator> {
-    let terminals = Terminals {
-        stdout: io::stdout().is_terminal(),
-        stderr: io::stderr().is_terminal(),
-    };
-    let mode = progress_mode(config.no_progress, streaming_output, terminals, file_count);
+fn create_coordinator(config: &ConfigSettings, file_count: usize) -> Option<ProgressCoordinator> {
+    let mode = progress_mode(config.no_progress, io::stderr().is_terminal(), file_count);
     ProgressCoordinator::new(mode, file_count)
 }
 
 /// Writes one line per successful hash and reports failures on stderr.
 ///
 /// Returns `true` if any file failed to hash or any line failed to write.
-/// A broken pipe stops output early.
+/// A broken pipe stops output early. Terminal output is written with progress
+/// cleared: error reports always, hash lines when flushed per line.
 fn write_results<P: Display>(
     out: &mut impl Write,
     results: impl IntoIterator<Item = (P, Result<BasicHash>)>,
     exclude_fn: bool,
     flush: LineFlush,
+    coordinator: Option<&ProgressCoordinator>,
 ) -> bool {
+    let report = |message: &dyn Display| suspended(coordinator, || eprintln!("{message}"));
     let mut had_error = false;
 
     for (pathstr, file_hash) in results {
-        match file_hash {
-            Ok(basic_hash) => match print_hash_line(out, &basic_hash, &pathstr, exclude_fn)
-                .and_then(|()| match flush {
-                    LineFlush::PerLine => out.flush(),
-                    LineFlush::Buffered => Ok(()),
-                }) {
-                Ok(()) => {}
-                Err(e) if e.kind() == io::ErrorKind::BrokenPipe => {
-                    let _ = out.flush();
-                    return had_error;
-                }
-                Err(e) => {
-                    eprintln!("Write error: {e}");
-                    had_error = true;
-                }
-            },
+        let basic_hash = match file_hash {
+            Ok(basic_hash) => basic_hash,
             Err(e) => {
-                eprintln!("File error for '{pathstr}': {e}");
+                report(&format_args!("File error for '{pathstr}': {e}"));
+                had_error = true;
+                continue;
+            }
+        };
+        let written = match flush {
+            LineFlush::PerLine => suspended(coordinator, || {
+                print_hash_line(out, &basic_hash, &pathstr, exclude_fn).and_then(|()| out.flush())
+            }),
+            LineFlush::Buffered => print_hash_line(out, &basic_hash, &pathstr, exclude_fn),
+        };
+        match written {
+            Ok(()) => {}
+            Err(e) if e.kind() == io::ErrorKind::BrokenPipe => {
+                let _ = out.flush();
+                return had_error;
+            }
+            Err(e) => {
+                report(&format_args!("Write error: {e}"));
                 had_error = true;
             }
         }
@@ -218,7 +223,7 @@ fn write_results<P: Display>(
     if let Err(e) = out.flush()
         && e.kind() != io::ErrorKind::BrokenPipe
     {
-        eprintln!("Write error: {e}");
+        report(&format_args!("Write error: {e}"));
         had_error = true;
     }
 
@@ -243,11 +248,13 @@ fn hash_with_progress(
     if config.debug_mode
         && elapsed >= Duration::from_millis(crate::progress::PROGRESS_THRESHOLD_MILLIS)
     {
-        eprintln!(
-            "File '{}' took {:.2}s to hash",
-            path.display(),
-            elapsed.as_secs_f64()
-        );
+        suspended(coordinator, || {
+            eprintln!(
+                "File '{}' took {:.2}s to hash",
+                path.display(),
+                elapsed.as_secs_f64()
+            );
+        });
     }
 
     result
@@ -324,7 +331,7 @@ mod tests {
             (name, Ok(BasicHash::new(format!("h{i}"))))
         });
 
-        assert!(!write_results(&mut recorder, results, false, flush));
+        assert!(!write_results(&mut recorder, results, false, flush, None));
         assert_eq!(*recorder.flushed.borrow(), b"h0 a.txt\nh1 b.txt\n");
         seen.into_inner()
     }
@@ -352,7 +359,8 @@ mod tests {
             &mut BrokenPipeWriter,
             results,
             false,
-            LineFlush::Buffered
+            LineFlush::Buffered,
+            None
         ));
     }
 
@@ -363,7 +371,8 @@ mod tests {
             &mut BrokenPipeWriter,
             results,
             false,
-            LineFlush::Buffered
+            LineFlush::Buffered,
+            None
         ));
     }
 }
