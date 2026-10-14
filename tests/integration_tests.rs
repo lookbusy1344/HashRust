@@ -507,6 +507,63 @@ fn test_glob_unreadable_directory_reported() {
 
     let stderr = String::from_utf8_lossy(&output.stderr);
     assert!(stderr.contains("locked"), "got: {stderr}");
+    assert!(!output.status.success());
+}
+
+// With a literal last component the glob crate stats `locked/f` and finds nothing.
+#[test]
+#[cfg(unix)]
+fn test_glob_unreadable_directory_literal_tail_fails() {
+    use std::fs;
+    use std::os::unix::fs::PermissionsExt;
+
+    let dir = tempfile::TempDir::new().expect("Failed to create temp dir");
+    let locked = dir.path().join("locked");
+    fs::create_dir(&locked).expect("Failed to create dir");
+    fs::write(locked.join("f"), b"x").expect("Failed to write file");
+    fs::set_permissions(&locked, fs::Permissions::from_mode(0o000))
+        .expect("Failed to set permissions");
+
+    let pattern = format!("{}/*/f", dir.path().display());
+    let output = hash_rust()
+        .args(["-n", &pattern])
+        .output()
+        .expect("Failed to execute hash_rust");
+
+    fs::set_permissions(&locked, fs::Permissions::from_mode(0o755))
+        .expect("Failed to restore permissions");
+
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        stderr.contains(&format!("No files match: {pattern}")),
+        "got: {stderr}"
+    );
+    assert!(!output.status.success());
+}
+
+#[test]
+fn test_glob_without_matches_fails_but_hashes_other_files() {
+    let dir = tempfile::TempDir::new().expect("Failed to create temp dir");
+    let file = dir.path().join("a.txt");
+    std::fs::write(&file, b"test").expect("Failed to write file");
+    let pattern = format!("{}/*.nomatch", dir.path().display());
+
+    let output = hash_rust()
+        .args(["-n", "-x", "-a", "MD5", &pattern])
+        .arg(&file)
+        .output()
+        .expect("Failed to execute hash_rust");
+
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        stderr.contains(&format!("No files match: {pattern}")),
+        "got: {stderr}"
+    );
+    assert!(!output.status.success());
+    assert_eq!(
+        String::from_utf8_lossy(&output.stdout),
+        "098f6bcd4621d373cade4e832627b4f6\n"
+    );
 }
 
 #[test]
@@ -717,4 +774,24 @@ fn test_special_file_argument_is_skipped() {
         String::from_utf8_lossy(&output.stdout).trim(),
         "098f6bcd4621d373cade4e832627b4f6"
     );
+}
+
+#[test]
+fn test_glob_matching_only_directories_fails() {
+    let dir = tempfile::TempDir::new().expect("Failed to create temp dir");
+    std::fs::create_dir(dir.path().join("sub")).expect("Failed to create dir");
+    let pattern = format!("{}/s*", dir.path().display());
+
+    let output = hash_rust()
+        .args(["-n", &pattern])
+        .output()
+        .expect("Failed to execute hash_rust");
+
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        stderr.contains(&format!("No files match: {pattern}")),
+        "got: {stderr}"
+    );
+    assert!(!output.status.success());
+    assert_eq!(String::from_utf8_lossy(&output.stdout), "");
 }

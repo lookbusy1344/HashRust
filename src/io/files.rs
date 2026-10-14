@@ -30,10 +30,7 @@ pub fn get_required_filenames(config: &ConfigSettings) -> InputPaths {
     } = if config.supplied_paths.is_empty() {
         get_paths_from_stdin(config)
     } else {
-        InputPaths {
-            paths: get_paths_matching_glob(config),
-            had_error: false,
-        }
+        get_paths_matching_glob(config)
     };
 
     // De-duplicate while preserving first-seen order.
@@ -120,7 +117,7 @@ fn is_hashable(path: &Path, debug_mode: bool) -> bool {
     }
 }
 
-fn get_paths_matching_glob(config: &ConfigSettings) -> Vec<PathBuf> {
+fn get_paths_matching_glob(config: &ConfigSettings) -> InputPaths {
     let glob_settings = glob::MatchOptions {
         case_sensitive: config.case_sensitive,
         require_literal_separator: false,
@@ -130,50 +127,60 @@ fn get_paths_matching_glob(config: &ConfigSettings) -> Vec<PathBuf> {
     config
         .supplied_paths
         .iter()
-        .flat_map(|pattern| expand_pattern(pattern, glob_settings, config.debug_mode))
-        .collect()
+        .map(|pattern| expand_pattern(pattern, glob_settings, config.debug_mode))
+        .fold(InputPaths::default(), |mut acc, expanded| {
+            acc.paths.extend(expanded.paths);
+            acc.had_error |= expanded.had_error;
+            acc
+        })
 }
 
 /// Expands one command-line argument into file paths.
 ///
 /// An existing path is taken literally, even when its name holds glob characters,
 /// and kept only if [`is_hashable`]. Glob matching needs UTF-8, so other arguments
-/// are taken literally.
-fn expand_pattern(pattern: &OsStr, options: glob::MatchOptions, debug_mode: bool) -> Vec<PathBuf> {
+/// are taken literally. A glob that cannot read a directory, or matches no file,
+/// is reported and sets `had_error`.
+fn expand_pattern(pattern: &OsStr, options: glob::MatchOptions, debug_mode: bool) -> InputPaths {
     let path = Path::new(pattern);
+    let literal = || InputPaths {
+        paths: vec![path.to_path_buf()],
+        had_error: false,
+    };
 
     if path.exists() {
         return if is_hashable(path, debug_mode) {
-            vec![path.to_path_buf()]
+            literal()
         } else {
-            Vec::new()
+            InputPaths::default()
         };
     }
 
     let Some(glob_pattern) = pattern.to_str().filter(|p| p.contains(GLOB_WILDCARDS)) else {
-        return vec![path.to_path_buf()];
+        return literal();
     };
 
-    match glob::glob_with(glob_pattern, options) {
-        Ok(entries) => {
-            let matches: Vec<_> = entries
-                .filter_map(|entry| match entry {
-                    Ok(path) if path.is_file() => Some(path),
-                    Ok(_) => None,
-                    Err(e) => {
-                        eprintln!("Error reading '{}': {}", e.path().display(), e.error());
-                        None
-                    }
-                })
-                .collect();
-            if matches.is_empty() && debug_mode {
-                eprintln!("No matches: {glob_pattern}");
+    // Invalid glob pattern: keep it as a literal so the missing file is reported
+    let Ok(entries) = glob::glob_with(glob_pattern, options) else {
+        return literal();
+    };
+
+    let mut expanded = InputPaths::default();
+    for entry in entries {
+        match entry {
+            Ok(path) if path.is_file() => expanded.paths.push(path),
+            Ok(_) => {}
+            Err(e) => {
+                eprintln!("Error reading '{}': {}", e.path().display(), e.error());
+                expanded.had_error = true;
             }
-            matches
         }
-        // Invalid glob pattern: keep it as a literal so the missing file is reported
-        Err(_) => vec![path.to_path_buf()],
     }
+    if expanded.paths.is_empty() {
+        eprintln!("No files match: {glob_pattern}");
+        expanded.had_error = true;
+    }
+    expanded
 }
 
 #[cfg(test)]

@@ -580,8 +580,9 @@ mod glob_tests {
             supplied_paths: vec![pattern.into()],
         };
 
-        let paths = get_required_filenames(&config).paths;
-        assert_eq!(paths.len(), 0); // No .xyz files
+        let input = get_required_filenames(&config);
+        assert_eq!(input.paths.len(), 0); // No .xyz files
+        assert!(input.had_error);
     }
 
     #[test]
@@ -699,8 +700,9 @@ mod glob_tests {
             supplied_paths: vec![pattern1.into(), pattern2.into()],
         };
 
-        let paths = get_required_filenames(&config).paths;
-        assert_eq!(paths.len(), 3); // 2 .txt files + 1 .md file
+        let input = get_required_filenames(&config);
+        assert_eq!(input.paths.len(), 3); // 2 .txt files + 1 .md file
+        assert!(!input.had_error);
     }
 
     #[test]
