@@ -54,6 +54,8 @@ Or pipe in a list of files:
 
 CRC32 is output as a 10-digit zero-padded 32-bit integer. The `-e` option cannot be used with it.
 
+Each line is `hash  path`, with two spaces, as GNU coreutils writes it. On unix, a path holding a backslash, newline or carriage return is escaped (`\\`, `\n`, `\r`), and the line starts with `\`. Hex SHA-256 output can be checked with `sha256sum -c`.
+
 ## Algorithms supported
 
 ```

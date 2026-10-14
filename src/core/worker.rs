@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::fmt::Display;
 use std::io::{self, BufWriter, IsTerminal, Write};
 use std::path::{Path, PathBuf};
@@ -46,16 +47,67 @@ impl LineFlush {
     }
 }
 
+/// Writes `hash  path` (two spaces), escaping the path as GNU coreutils does.
+///
+/// On unix a backslash, newline or carriage return in the path is escaped, and the
+/// line then starts with `\\`.
 fn print_hash_line(
     out: &mut impl Write,
     hash: &BasicHash,
-    pathstr: &impl Display,
+    path: &Path,
     exclude_fn: bool,
 ) -> io::Result<()> {
     if exclude_fn {
-        writeln!(out, "{hash}")
-    } else {
-        writeln!(out, "{hash} {pathstr}")
+        return writeln!(out, "{hash}");
+    }
+    let name = path_bytes(path);
+    if name.iter().any(|&b| escape(b).is_some()) {
+        out.write_all(b"\\")?;
+    }
+    write!(out, "{hash}  ")?;
+    for chunk in name.split_inclusive(|&b| escape(b).is_some()) {
+        match chunk
+            .split_last()
+            .and_then(|(&last, rest)| Some((rest, escape(last)?)))
+        {
+            Some((rest, escaped)) => {
+                out.write_all(rest)?;
+                out.write_all(escaped)?;
+            }
+            None => out.write_all(chunk)?,
+        }
+    }
+    writeln!(out)
+}
+
+#[cfg(unix)]
+fn escape(byte: u8) -> Option<&'static [u8]> {
+    match byte {
+        b'\\' => Some(b"\\\\"),
+        b'\n' => Some(b"\\n"),
+        b'\r' => Some(b"\\r"),
+        _ => None,
+    }
+}
+
+/// Windows paths use `\\` as the separator and cannot hold control characters.
+#[cfg(not(unix))]
+fn escape(_: u8) -> Option<&'static [u8]> {
+    None
+}
+
+/// The path's bytes as the OS stores them, so the printed name finds the file again.
+#[cfg(unix)]
+fn path_bytes(path: &Path) -> Cow<'_, [u8]> {
+    use std::os::unix::ffi::OsStrExt;
+    Cow::Borrowed(path.as_os_str().as_bytes())
+}
+
+#[cfg(not(unix))]
+fn path_bytes(path: &Path) -> Cow<'_, [u8]> {
+    match path.to_string_lossy() {
+        Cow::Borrowed(s) => Cow::Borrowed(s.as_bytes()),
+        Cow::Owned(s) => Cow::Owned(s.into_bytes()),
     }
 }
 
@@ -124,7 +176,7 @@ fn file_hashes_st(config: &ConfigSettings, paths: &[PathBuf]) -> bool {
     // Lazy iterator: each file is hashed only when its line is about to be written
     let results = paths.iter().map(|path| {
         let file_hash = hash_with_progress(config, path, coordinator.as_ref());
-        (path.display(), file_hash)
+        (path, file_hash)
     });
 
     let had_error = write_results(
@@ -152,7 +204,7 @@ fn file_hashes_mt(config: &ConfigSettings, paths: &[PathBuf]) -> bool {
         .par_iter()
         .map(|path| {
             let file_hash = hash_with_progress(config, path, coordinator.as_ref());
-            (path.display(), file_hash)
+            (path, file_hash)
         })
         .collect();
 
@@ -182,7 +234,7 @@ fn create_coordinator(config: &ConfigSettings, file_count: usize) -> Option<Prog
 /// Returns `true` if any file failed to hash or any line failed to write.
 /// A broken pipe stops output early. Terminal output is written with progress
 /// cleared: error reports always, hash lines when flushed per line.
-fn write_results<P: Display>(
+fn write_results<P: AsRef<Path>>(
     out: &mut impl Write,
     results: impl IntoIterator<Item = (P, Result<BasicHash>)>,
     exclude_fn: bool,
@@ -192,20 +244,21 @@ fn write_results<P: Display>(
     let report = |message: &dyn Display| suspended(coordinator, || eprintln!("{message}"));
     let mut had_error = false;
 
-    for (pathstr, file_hash) in results {
+    for (path, file_hash) in results {
+        let path = path.as_ref();
         let basic_hash = match file_hash {
             Ok(basic_hash) => basic_hash,
             Err(e) => {
-                report(&format_args!("File error for '{pathstr}': {e}"));
+                report(&format_args!("File error for '{}': {e}", path.display()));
                 had_error = true;
                 continue;
             }
         };
         let written = match flush {
             LineFlush::PerLine => suspended(coordinator, || {
-                print_hash_line(out, &basic_hash, &pathstr, exclude_fn).and_then(|()| out.flush())
+                print_hash_line(out, &basic_hash, path, exclude_fn).and_then(|()| out.flush())
             }),
-            LineFlush::Buffered => print_hash_line(out, &basic_hash, &pathstr, exclude_fn),
+            LineFlush::Buffered => print_hash_line(out, &basic_hash, path, exclude_fn),
         };
         match written {
             Ok(()) => {}
@@ -280,7 +333,7 @@ mod tests {
     #[test]
     fn test_print_hash_line_propagates_broken_pipe() {
         let hash = BasicHash::new("deadbeef".to_string());
-        let result = print_hash_line(&mut BrokenPipeWriter, &hash, &"f.txt", false);
+        let result = print_hash_line(&mut BrokenPipeWriter, &hash, Path::new("f.txt"), false);
         assert_eq!(result.unwrap_err().kind(), io::ErrorKind::BrokenPipe);
     }
 
@@ -288,15 +341,67 @@ mod tests {
     fn test_print_hash_line_includes_filename() {
         let hash = BasicHash::new("abc123".to_string());
         let mut buf = Vec::new();
-        print_hash_line(&mut buf, &hash, &"file.txt", false).unwrap();
-        assert_eq!(buf, b"abc123 file.txt\n");
+        print_hash_line(&mut buf, &hash, Path::new("file.txt"), false).unwrap();
+        assert_eq!(buf, b"abc123  file.txt\n");
+    }
+
+    fn hash_line(name: impl AsRef<Path>, exclude_fn: bool) -> Vec<u8> {
+        let hash = BasicHash::new("abc123".to_string());
+        let mut buf = Vec::new();
+        print_hash_line(&mut buf, &hash, name.as_ref(), exclude_fn).unwrap();
+        buf
+    }
+
+    // Escaping follows GNU coreutils: a leading `\` marks an escaped name.
+    #[test]
+    #[cfg(unix)]
+    fn test_print_hash_line_escapes_newline() {
+        assert_eq!(hash_line("a\nb", false), b"\\abc123  a\\nb\n");
+    }
+
+    #[test]
+    #[cfg(unix)]
+    fn test_print_hash_line_escapes_carriage_return() {
+        assert_eq!(hash_line("a\rb", false), b"\\abc123  a\\rb\n");
+    }
+
+    #[test]
+    #[cfg(unix)]
+    fn test_print_hash_line_escapes_backslash() {
+        assert_eq!(hash_line("a\\b", false), b"\\abc123  a\\\\b\n");
+    }
+
+    #[test]
+    #[cfg(unix)]
+    fn test_print_hash_line_escapes_every_special_byte() {
+        assert_eq!(hash_line("\\\n\r\\", false), b"\\abc123  \\\\\\n\\r\\\\\n");
+    }
+
+    // GNU reads the byte after the first space as a mode marker, so names may start with ` ` or `*`.
+    #[test]
+    fn test_print_hash_line_keeps_leading_space_and_star() {
+        assert_eq!(hash_line(" *x", false), b"abc123   *x\n");
+    }
+
+    #[test]
+    fn test_print_hash_line_without_filename_is_not_escaped() {
+        assert_eq!(hash_line("a\nb", true), b"abc123\n");
+    }
+
+    #[test]
+    #[cfg(unix)]
+    fn test_print_hash_line_writes_non_utf8_name_bytes() {
+        use std::ffi::OsStr;
+        use std::os::unix::ffi::OsStrExt;
+        let name = Path::new(OsStr::from_bytes(b"\xff.txt"));
+        assert_eq!(hash_line(name, false), b"abc123  \xff.txt\n");
     }
 
     #[test]
     fn test_print_hash_line_excludes_filename_when_requested() {
         let hash = BasicHash::new("abc123".to_string());
         let mut buf = Vec::new();
-        print_hash_line(&mut buf, &hash, &"file.txt", true).unwrap();
+        print_hash_line(&mut buf, &hash, Path::new("file.txt"), true).unwrap();
         assert_eq!(buf, b"abc123\n");
     }
 
@@ -332,7 +437,7 @@ mod tests {
         });
 
         assert!(!write_results(&mut recorder, results, false, flush, None));
-        assert_eq!(*recorder.flushed.borrow(), b"h0 a.txt\nh1 b.txt\n");
+        assert_eq!(*recorder.flushed.borrow(), b"h0  a.txt\nh1  b.txt\n");
         seen.into_inner()
     }
 
@@ -340,7 +445,7 @@ mod tests {
     fn test_write_results_per_line_flushes_before_next_file() {
         assert_eq!(
             flushed_before_second_result(LineFlush::PerLine),
-            b"h0 a.txt\n"
+            b"h0  a.txt\n"
         );
     }
 

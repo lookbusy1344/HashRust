@@ -183,7 +183,7 @@ fn test_double_dash_allows_dash_prefixed_filename() {
     );
     let stdout = String::from_utf8_lossy(&output.stdout);
     // MD5 of "test", with the filename kept (-x after -- is not the exclude flag)
-    assert_eq!(stdout.trim(), "098f6bcd4621d373cade4e832627b4f6 -x");
+    assert_eq!(stdout.trim(), "098f6bcd4621d373cade4e832627b4f6  -x");
 }
 
 #[test]
@@ -317,10 +317,9 @@ fn test_multi_file_parallel_hashing() {
     let lines: Vec<_> = stdout.lines().filter(|l| !l.is_empty()).collect();
     assert_eq!(lines.len(), 5, "Should have output for all 5 files");
 
-    // Verify each line starts with a 64-char SHA3-256 hex hash followed by a space and path.
-    // Using splitn(2) rather than split_whitespace so paths containing spaces are handled correctly.
+    // Each line is a 64-char SHA3-256 hex hash, two spaces, then the path.
     for (i, line) in lines.iter().enumerate() {
-        let mut parts = line.splitn(2, ' ');
+        let mut parts = line.splitn(2, "  ");
         let hash = parts.next().unwrap_or("");
         let path = parts.next().unwrap_or("");
         assert_eq!(
@@ -359,7 +358,7 @@ fn test_overall_progress_bar_path_with_many_files() {
     assert_eq!(lines.len(), 12, "Should output one line per file");
 
     for line in &lines {
-        let hash = line.split(' ').next().unwrap_or("");
+        let hash = line.split("  ").next().unwrap_or("");
         assert_eq!(hash.len(), 64, "Each hash should be 64 hex chars");
         assert!(hash.chars().all(|c| c.is_ascii_hexdigit()));
     }
@@ -413,7 +412,7 @@ fn test_stdin_file_paths() {
     // Verify each output line starts with a hash followed by a path
     for line in lines {
         assert!(
-            line.splitn(2, ' ').count() == 2,
+            line.splitn(2, "  ").count() == 2,
             "Each line should have hash and path"
         );
     }
@@ -794,4 +793,27 @@ fn test_glob_matching_only_directories_fails() {
     );
     assert!(!output.status.success());
     assert_eq!(String::from_utf8_lossy(&output.stdout), "");
+}
+
+#[test]
+#[cfg(unix)]
+fn test_newline_in_filename_is_escaped() {
+    let dir = tempfile::TempDir::new().expect("Failed to create temp dir");
+    let file = dir.path().join("n\nl");
+    std::fs::write(&file, b"test").expect("Failed to write file");
+
+    let output = hash_rust()
+        .args(["-n", "-a", "MD5"])
+        .arg(&file)
+        .output()
+        .expect("Failed to execute hash_rust");
+
+    assert!(output.status.success());
+    assert_eq!(
+        String::from_utf8_lossy(&output.stdout),
+        format!(
+            "\\098f6bcd4621d373cade4e832627b4f6  {}/n\\nl\n",
+            dir.path().display()
+        )
+    );
 }

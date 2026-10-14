@@ -36,9 +36,10 @@ begin {
         FileHashJS(
             [string]$line
         ) {
-            $split = $line.Split(' ', 2)
-            $this.Hash = $split[0]
-            $this.File = [System.IO.FileInfo] $split[1]
+            # "hash  path": the hash holds no spaces, so the first two spaces end it
+            $sep = $line.IndexOf('  ')
+            $this.Hash = $line.Substring(0, $sep)
+            $this.File = [System.IO.FileInfo] $line.Substring($sep + 2)
         }
     }
 
