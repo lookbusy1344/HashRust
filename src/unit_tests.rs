@@ -274,7 +274,6 @@ mod hash_tests {
 
     #[test]
     fn test_call_hasher_large_file() {
-        // Create a file larger than BUFFER_SIZE (32KB) to test the chunked reading path
         let content = vec![b'x'; 40_000];
         let file = create_test_file_with_content(&content);
         let path = file.path().to_string_lossy().to_string();
@@ -286,6 +285,22 @@ mod hash_tests {
         assert_eq!(
             result.unwrap().as_str(),
             "77fc266841274f9acafa1855a5719a6aa96812a1ad531e3ceb180c9f1b332ce0"
+        );
+    }
+
+    #[test]
+    fn test_call_hasher_multi_chunk_file() {
+        // Two full 256 KiB reads and a partial one
+        let content = vec![b'x'; 600_000];
+        let file = create_test_file_with_content(&content);
+        let path = file.path().to_string_lossy().to_string();
+
+        let result = call_hasher(HashAlgorithm::SHA3_256, OutputEncoding::Hex, &path);
+
+        // `openssl dgst -sha3-256` of 600,000 'x' bytes
+        assert_eq!(
+            result.unwrap().as_str(),
+            "34ba13c6c16d106adb436eda02f77878ba28f9c02d0799592956a2a9a66fb7a0"
         );
     }
 
@@ -402,7 +417,6 @@ mod hash_tests {
 
     #[test]
     fn test_call_hasher_xxh128_multi_chunk_file() {
-        // Larger than the read buffer, so the streaming path is used
         let content: Vec<u8> = (0..100_000u32).map(|i| (i % 251) as u8).collect();
         let file = create_test_file_with_content(&content);
         let path = file.path().to_string_lossy().to_string();

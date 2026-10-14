@@ -56,7 +56,7 @@ HashRust is a CLI file hashing utility written in Rust that supports multiple ha
 - `Digest` trait for generic hash algorithm implementation
 - Multi-threading via Rayon `par_iter`; single-threaded fallback for single files or when requested
 - Enum-driven algorithm selection with `strum` for string parsing
-- Buffer size: small files (≤32KB) read entirely, larger files use 32KB chunks
+- Files are read in 256 KiB chunks into one heap buffer per file
 - Minimise cloning
 
 ### Algorithm Support
