@@ -513,7 +513,7 @@ mod glob_tests {
             supplied_paths: vec![pattern.into()],
         };
 
-        let paths = get_required_filenames(&config);
+        let paths = get_required_filenames(&config).paths;
         assert_eq!(paths.len(), 2); // test1.txt and test2.txt (not Test3.TXT)
     }
 
@@ -535,7 +535,7 @@ mod glob_tests {
             supplied_paths: vec![pattern.into()],
         };
 
-        let paths = get_required_filenames(&config);
+        let paths = get_required_filenames(&config).paths;
         assert_eq!(paths.len(), 3); // test1.txt, test2.txt, and Test3.TXT
     }
 
@@ -557,7 +557,7 @@ mod glob_tests {
             supplied_paths: vec![pattern.into()],
         };
 
-        let paths = get_required_filenames(&config);
+        let paths = get_required_filenames(&config).paths;
         assert_eq!(paths.len(), 1);
         assert!(paths[0].ends_with("file.md"));
     }
@@ -580,7 +580,7 @@ mod glob_tests {
             supplied_paths: vec![pattern.into()],
         };
 
-        let paths = get_required_filenames(&config);
+        let paths = get_required_filenames(&config).paths;
         assert_eq!(paths.len(), 0); // No .xyz files
     }
 
@@ -602,7 +602,7 @@ mod glob_tests {
             supplied_paths: vec![literal_path.clone().into()],
         };
 
-        let paths = get_required_filenames(&config);
+        let paths = get_required_filenames(&config).paths;
         assert_eq!(paths.len(), 1);
         assert_eq!(paths[0], std::path::Path::new(&literal_path));
     }
@@ -629,7 +629,7 @@ mod glob_tests {
         };
 
         // Missing literals pass through; hashing reports them per file
-        let paths = get_required_filenames(&config);
+        let paths = get_required_filenames(&config).paths;
         assert_eq!(paths, vec![std::path::PathBuf::from(nonexistent)]);
     }
 
@@ -653,7 +653,7 @@ mod glob_tests {
             supplied_paths: vec![literal_path.clone().into()],
         };
 
-        let paths = get_required_filenames(&config);
+        let paths = get_required_filenames(&config).paths;
         assert_eq!(paths, vec![std::path::PathBuf::from(literal_path)]);
     }
 
@@ -676,7 +676,7 @@ mod glob_tests {
         };
 
         // Should return empty list or error (directory is ignored in non-debug mode)
-        let paths = get_required_filenames(&config);
+        let paths = get_required_filenames(&config).paths;
         assert_eq!(paths.len(), 0);
     }
 
@@ -699,7 +699,7 @@ mod glob_tests {
             supplied_paths: vec![pattern1.into(), pattern2.into()],
         };
 
-        let paths = get_required_filenames(&config);
+        let paths = get_required_filenames(&config).paths;
         assert_eq!(paths.len(), 3); // 2 .txt files + 1 .md file
     }
 
@@ -721,7 +721,7 @@ mod glob_tests {
             supplied_paths: vec![pattern.into()],
         };
 
-        let paths = get_required_filenames(&config);
+        let paths = get_required_filenames(&config).paths;
         assert_eq!(paths.len(), 2); // Limited to 2 files
     }
 
@@ -745,7 +745,7 @@ mod glob_tests {
             supplied_paths: vec![pattern1.into(), pattern2.into()],
         };
 
-        let paths = get_required_filenames(&config);
+        let paths = get_required_filenames(&config).paths;
         let mut unique = std::collections::HashSet::new();
         for path in &paths {
             assert!(
@@ -774,7 +774,7 @@ mod glob_tests {
             supplied_paths: vec![literal.clone().into(), literal.into()],
         };
 
-        let paths = get_required_filenames(&config);
+        let paths = get_required_filenames(&config).paths;
         assert_eq!(paths.len(), 1);
     }
 
@@ -795,7 +795,7 @@ mod glob_tests {
             ],
         };
 
-        let paths = get_required_filenames(&config);
+        let paths = get_required_filenames(&config).paths;
         // First spelling wins and is kept as given
         assert_eq!(
             paths,
@@ -822,7 +822,7 @@ mod glob_tests {
             supplied_paths: vec![pattern.into()],
         };
 
-        let paths = get_required_filenames(&config);
+        let paths = get_required_filenames(&config).paths;
         // Should only include files, not the 'subdir' directory
         for path in &paths {
             assert!(!path.ends_with("subdir"));
@@ -920,7 +920,10 @@ mod non_utf8_path_tests {
             supplied_paths: vec![raw.to_os_string()],
         };
 
-        assert_eq!(get_required_filenames(&config), vec![PathBuf::from(raw)]);
+        assert_eq!(
+            get_required_filenames(&config).paths,
+            vec![PathBuf::from(raw)]
+        );
     }
 
     #[test]

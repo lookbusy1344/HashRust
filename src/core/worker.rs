@@ -9,10 +9,10 @@ use rayon::prelude::*;
 use crate::cli::config::ConfigSettings;
 use crate::core::types::BasicHash;
 use crate::hash::algorithms::call_hasher;
-use crate::io::files::{check_path_source, get_required_filenames};
+use crate::io::files::{InputPaths, check_path_source, get_required_filenames};
 use crate::progress::{ProgressCoordinator, Terminals, progress_mode};
 
-/// Returned by `worker_func` when one or more files failed to hash.
+/// Returned by `worker_func` when one or more files could not be hashed.
 ///
 /// Distinguished from config/arg errors so `main` can suppress the help banner
 /// (individual file errors are already printed to stderr before this is returned).
@@ -21,7 +21,7 @@ pub(crate) struct FileHashError;
 
 impl std::fmt::Display for FileHashError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "One or more files failed to hash")
+        write!(f, "One or more files could not be hashed")
     }
 }
 
@@ -46,26 +46,33 @@ pub fn worker_func(config: &ConfigSettings) -> Result<()> {
     }
 
     check_path_source(config, io::stdin().is_terminal())?;
-    let paths = get_required_filenames(config);
+    let InputPaths {
+        paths,
+        had_error: input_error,
+    } = get_required_filenames(config);
 
     if paths.is_empty() {
         if config.debug_mode {
             eprintln!("No files found");
         }
-        return Ok(());
+        return if input_error {
+            Err(FileHashError.into())
+        } else {
+            Ok(())
+        };
     }
 
     if config.debug_mode {
         eprintln!("Files to hash: {paths:?}");
     }
 
-    let had_error = if config.single_thread || paths.len() == 1 {
+    let hash_error = if config.single_thread || paths.len() == 1 {
         file_hashes_st(config, &paths)
     } else {
         file_hashes_mt(config, &paths)
     };
 
-    if had_error {
+    if input_error || hash_error {
         return Err(FileHashError.into());
     }
 

@@ -571,6 +571,34 @@ fn test_stdin_io_error_always_reported_to_stderr() {
     assert_eq!(lines.len(), 1, "Should hash the one valid file from stdin");
 }
 
+// Reading a directory fails with EISDIR on every call, so the reader must stop at the first error.
+#[test]
+#[cfg(unix)]
+fn test_stdin_read_error_stops_reading_and_fails() {
+    let dir = tempfile::TempDir::new().expect("Failed to create temp dir");
+    let stdin = std::fs::File::open(dir.path()).expect("Failed to open dir");
+
+    let output = hash_rust()
+        .arg("-n")
+        .stdin(stdin)
+        .output()
+        .expect("Failed to execute hash_rust");
+
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert_eq!(
+        stderr.matches("Error reading from stdin").count(),
+        1,
+        "got: {stderr}"
+    );
+    assert!(stderr.contains("Is a directory"), "got: {stderr}");
+    assert!(
+        stderr.contains("Error: One or more files could not be hashed"),
+        "got: {stderr}"
+    );
+    assert!(!output.status.success());
+    assert_eq!(String::from_utf8_lossy(&output.stdout), "");
+}
+
 #[test]
 fn test_error_help_goes_to_stderr_not_stdout() {
     // When a configuration error occurs (invalid algorithm), help text must go to

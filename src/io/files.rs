@@ -16,11 +16,24 @@ pub fn check_path_source(config: &ConfigSettings, stdin_is_terminal: bool) -> an
     Ok(())
 }
 
-pub fn get_required_filenames(config: &ConfigSettings) -> Vec<PathBuf> {
-    let mut paths = if config.supplied_paths.is_empty() {
+/// Paths to hash, and whether collecting them hit an error already reported on stderr.
+#[derive(Debug, Default)]
+pub struct InputPaths {
+    pub paths: Vec<PathBuf>,
+    pub had_error: bool,
+}
+
+pub fn get_required_filenames(config: &ConfigSettings) -> InputPaths {
+    let InputPaths {
+        mut paths,
+        had_error,
+    } = if config.supplied_paths.is_empty() {
         get_paths_from_stdin(config)
     } else {
-        get_paths_matching_glob(config)
+        InputPaths {
+            paths: get_paths_matching_glob(config),
+            had_error: false,
+        }
     };
 
     // De-duplicate while preserving first-seen order.
@@ -35,7 +48,7 @@ pub fn get_required_filenames(config: &ConfigSettings) -> Vec<PathBuf> {
         paths.truncate(limit);
     }
 
-    paths
+    InputPaths { paths, had_error }
 }
 
 /// Path without `.` components, so `./a.txt` and `a.txt` compare equal.
@@ -45,25 +58,30 @@ fn dedup_key(path: &Path) -> PathBuf {
         .collect()
 }
 
-fn get_paths_from_stdin(config: &ConfigSettings) -> Vec<PathBuf> {
-    let stdin = io::stdin();
-    stdin
-        .lock()
-        .split(NEWLINE)
-        .filter_map(|line_result| match line_result {
+/// Reads one path per line. Stops at the first read error, which can repeat forever.
+fn get_paths_from_stdin(config: &ConfigSettings) -> InputPaths {
+    let mut paths = Vec::new();
+    for line in io::stdin().lock().split(NEWLINE) {
+        match line {
             Ok(line) => {
                 let path = stdin_line_to_path(line);
-                (!path.as_os_str().is_empty() && is_hashable(&path, config.debug_mode))
-                    .then_some(path)
+                if !path.as_os_str().is_empty() && is_hashable(&path, config.debug_mode) {
+                    paths.push(path);
+                }
             }
             Err(e) => {
-                // Always report stdin I/O errors so the user isn't silently left
-                // with fewer files hashed than expected.
                 eprintln!("Error reading from stdin: {e}");
-                None
+                return InputPaths {
+                    paths,
+                    had_error: true,
+                };
             }
-        })
-        .collect()
+        }
+    }
+    InputPaths {
+        paths,
+        had_error: false,
+    }
 }
 
 /// Converts one stdin line (without its newline) to a path, dropping a trailing `\r`.
