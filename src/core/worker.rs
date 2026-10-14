@@ -27,6 +27,25 @@ impl std::fmt::Display for FileHashError {
 
 impl std::error::Error for FileHashError {}
 
+/// When hash lines reach the output.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum LineFlush {
+    /// At the end, or when the buffer fills.
+    Buffered,
+    /// After each line, so a terminal shows each result as its file finishes.
+    PerLine,
+}
+
+impl LineFlush {
+    fn for_stdout() -> Self {
+        if io::stdout().is_terminal() {
+            Self::PerLine
+        } else {
+            Self::Buffered
+        }
+    }
+}
+
 fn print_hash_line(
     out: &mut impl Write,
     hash: &BasicHash,
@@ -109,7 +128,12 @@ fn file_hashes_st(config: &ConfigSettings, paths: &[PathBuf]) -> bool {
         (path.display(), file_hash)
     });
 
-    let had_error = write_results(&mut out, results, config.exclude_fn);
+    let had_error = write_results(
+        &mut out,
+        results,
+        config.exclude_fn,
+        LineFlush::for_stdout(),
+    );
     if let Some(c) = &coordinator {
         c.finish();
     }
@@ -139,7 +163,7 @@ fn file_hashes_mt(config: &ConfigSettings, paths: &[PathBuf]) -> bool {
     let stdout = io::stdout();
     let mut out = BufWriter::new(stdout.lock());
 
-    write_results(&mut out, results, config.exclude_fn)
+    write_results(&mut out, results, config.exclude_fn, LineFlush::Buffered)
 }
 
 fn create_coordinator(
@@ -163,12 +187,17 @@ fn write_results<P: Display>(
     out: &mut impl Write,
     results: impl IntoIterator<Item = (P, Result<BasicHash>)>,
     exclude_fn: bool,
+    flush: LineFlush,
 ) -> bool {
     let mut had_error = false;
 
     for (pathstr, file_hash) in results {
         match file_hash {
-            Ok(basic_hash) => match print_hash_line(out, &basic_hash, &pathstr, exclude_fn) {
+            Ok(basic_hash) => match print_hash_line(out, &basic_hash, &pathstr, exclude_fn)
+                .and_then(|()| match flush {
+                    LineFlush::PerLine => out.flush(),
+                    LineFlush::Buffered => Ok(()),
+                }) {
                 Ok(()) => {}
                 Err(e) if e.kind() == io::ErrorKind::BrokenPipe => {
                     let _ = out.flush();
@@ -227,6 +256,8 @@ fn hash_with_progress(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::cell::RefCell;
+    use std::rc::Rc;
 
     struct BrokenPipeWriter;
 
@@ -262,18 +293,77 @@ mod tests {
         assert_eq!(buf, b"abc123\n");
     }
 
+    /// Records which bytes have been flushed, shared with the results iterator.
+    #[derive(Clone, Default)]
+    struct FlushRecorder {
+        pending: Rc<RefCell<Vec<u8>>>,
+        flushed: Rc<RefCell<Vec<u8>>>,
+    }
+
+    impl io::Write for FlushRecorder {
+        fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+            self.pending.borrow_mut().extend_from_slice(buf);
+            Ok(buf.len())
+        }
+        fn flush(&mut self) -> io::Result<()> {
+            let pending = std::mem::take(&mut *self.pending.borrow_mut());
+            self.flushed.borrow_mut().extend(pending);
+            Ok(())
+        }
+    }
+
+    /// Writes two lines and returns what was flushed when the second result was produced.
+    fn flushed_before_second_result(flush: LineFlush) -> Vec<u8> {
+        let mut recorder = FlushRecorder::default();
+        let observer = recorder.clone();
+        let seen = RefCell::new(Vec::new());
+        let results = ["a.txt", "b.txt"].into_iter().enumerate().map(|(i, name)| {
+            if i == 1 {
+                *seen.borrow_mut() = observer.flushed.borrow().clone();
+            }
+            (name, Ok(BasicHash::new(format!("h{i}"))))
+        });
+
+        assert!(!write_results(&mut recorder, results, false, flush));
+        assert_eq!(*recorder.flushed.borrow(), b"h0 a.txt\nh1 b.txt\n");
+        seen.into_inner()
+    }
+
+    #[test]
+    fn test_write_results_per_line_flushes_before_next_file() {
+        assert_eq!(
+            flushed_before_second_result(LineFlush::PerLine),
+            b"h0 a.txt\n"
+        );
+    }
+
+    #[test]
+    fn test_write_results_buffered_flushes_at_end() {
+        assert_eq!(flushed_before_second_result(LineFlush::Buffered), b"");
+    }
+
     #[test]
     fn test_write_results_broken_pipe_keeps_earlier_error() {
         let results = [
             ("bad.txt", Err(anyhow::anyhow!("unreadable"))),
             ("good.txt", Ok(BasicHash::new("abc123".to_string()))),
         ];
-        assert!(write_results(&mut BrokenPipeWriter, results, false));
+        assert!(write_results(
+            &mut BrokenPipeWriter,
+            results,
+            false,
+            LineFlush::Buffered
+        ));
     }
 
     #[test]
     fn test_write_results_broken_pipe_without_error_is_success() {
         let results = [("good.txt", Ok(BasicHash::new("abc123".to_string())))];
-        assert!(!write_results(&mut BrokenPipeWriter, results, false));
+        assert!(!write_results(
+            &mut BrokenPipeWriter,
+            results,
+            false,
+            LineFlush::Buffered
+        ));
     }
 }
